@@ -1,5 +1,6 @@
 use rulego_rs::{Message, RuleEngine};
-use tracing::{info, Level};
+use serde_json::json;
+use tracing::{error, info, Level};
 
 const RULE_CHAIN: &str = r#"{
     "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
@@ -96,42 +97,33 @@ const RULE_CHAIN: &str = r#"{
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 初始化日志
+    // 初始化日志系统
     tracing_subscriber::fmt()
         .with_max_level(Level::DEBUG)
         .init();
 
-    // 创建规则引擎实例
-    let engine = RuleEngine::new();
+    // 创建引擎实例并等待组件注册完成
+    let engine = RuleEngine::new().await;
 
-    // 加载规则链配置
+    // 加载规则链
     engine.load_chain(RULE_CHAIN).await?;
 
-    info!(
-        "规则链加载完成, 版本: {}",
-        engine.get_current_version().await
+    // 获取当前版本
+    info!("当前规则链版本: {}", engine.get_current_version().await);
+
+    // 处理消息
+    let msg = Message::new(
+        "test",
+        json!({
+            "value": 1,
+            "type": "test"
+        }),
     );
 
-    // 测试不同温度场景
-    let test_temps = vec![5.0, 25.0, 35.0];
-
-    for temp in test_temps {
-        // 创建测试消息
-        let msg = Message::new(
-            "temperature",
-            serde_json::json!({
-                "value": temp,
-                "unit": "celsius"
-            }),
-        );
-
-        info!("开始处理消息: {:?}", msg);
-
-        // 处理消息
-        match engine.process_msg(msg).await {
-            Ok(result) => info!("处理结果: {:?}", result),
-            Err(e) => eprintln!("处理失败: {:?}", e),
-        }
+    info!("开始处理消息: {:?}", msg);
+    match engine.process_msg(msg).await {
+        Ok(result) => info!("处理结果: {:?}", result),
+        Err(e) => error!("处理失败: {}", e),
     }
 
     Ok(())

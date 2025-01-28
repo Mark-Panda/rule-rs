@@ -1,5 +1,65 @@
 use rulego_rs::{Message, RuleEngine};
+use serde_json::json;
 use tracing::{info, Level};
+
+// const RULE_GET_CHAIN: &str = r#"{
+//     "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
+//     "name": "REST客户端测试链",
+//     "root": true,
+//     "nodes": [
+//         {
+//             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
+//             "type_name": "rest_client",
+//             "config": {
+//                 "url": "https://api.example.com/weather",
+//                 "method": "GET",
+//                 "headers": {
+//                     "Authorization": "Bearer ${msg.data.token}",
+//                     "Content-Type": "application/json"
+//                 },
+//                 "query_params": {
+//                     "city": "${msg.data.city}",
+//                     "aqi": "no"
+//                 },
+//                 "timeout": 5000
+//             },
+//             "layout": { "x": 100, "y": 100 }
+//         },
+//         {
+//             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
+//             "type_name": "transform_js",
+//             "config": {
+//                 "script": "const resp = msg.data; return { data: { temperature: resp.temp, humidity: resp.humidity, weather: resp.weather.description } };"
+//             },
+//             "layout": { "x": 300, "y": 100 }
+//         },
+//         {
+//             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304",
+//             "type_name": "log",
+//             "config": {
+//                 "template": "天气信息 - 温度: ${msg.data.temperature}°C, 湿度: ${msg.data.humidity}%, 天气: ${msg.data.weather}"
+//             },
+//             "layout": { "x": 500, "y": 100 }
+//         }
+//     ],
+//     "connections": [
+//         {
+//             "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
+//             "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
+//             "type_name": "success"
+//         },
+//         {
+//             "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
+//             "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304",
+//             "type_name": "success"
+//         }
+//     ],
+//     "metadata": {
+//         "version": 1,
+//         "created_at": 1679800000,
+//         "updated_at": 1679800000
+//     }
+// }"#;
 
 const RULE_CHAIN: &str = r#"{
     "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
@@ -63,37 +123,34 @@ const RULE_CHAIN: &str = r#"{
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 初始化日志
+    // 初始化日志系统
     tracing_subscriber::fmt()
         .with_max_level(Level::DEBUG)
         .init();
 
-    // 创建规则引擎实例
-    let engine = RuleEngine::new();
+    // 创建引擎实例并等待组件注册完成
+    let engine = RuleEngine::new().await;
 
-    // 加载规则链配置
+    // 加载规则链
     engine.load_chain(RULE_CHAIN).await?;
-
     info!(
-        "规则链加载完成, 版本: {}",
+        "规则链加载成功, 版本: {}",
         engine.get_current_version().await
     );
 
-    // 创建查询消息
+    // 创建测试消息
     let msg = Message::new(
-        "query",
-        serde_json::json!({
-            "q": "Shanghai",
-            "aqi": "no"
+        "weather_query",
+        json!({
+            "city": "Shanghai",
+            "token": "test_token"
         }),
     );
-
-    info!("开始处理消息: {:?}", msg);
 
     // 处理消息
     match engine.process_msg(msg).await {
         Ok(result) => info!("处理结果: {:?}", result),
-        Err(e) => eprintln!("处理失败: {:?}", e),
+        Err(e) => info!("处理失败: {:?}", e),
     }
 
     Ok(())

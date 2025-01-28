@@ -1,5 +1,6 @@
 use rulego_rs::{Message, RuleEngine};
-use tracing::{info, Level};
+use serde_json::json;
+use tracing::{error, info, Level};
 
 // 包含循环的规则链配置
 const CIRCULAR_CHAIN: &str = r#"{
@@ -61,34 +62,35 @@ const CIRCULAR_CHAIN: &str = r#"{
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 初始化日志
+    // 初始化日志系统
     tracing_subscriber::fmt()
         .with_max_level(Level::DEBUG)
         .init();
 
-    // 创建规则引擎实例
-    let engine = RuleEngine::new();
+    // 创建引擎实例并等待组件注册完成
+    let engine = RuleEngine::new().await;
 
-    // 尝试加载包含循环的规则链
+    // 尝试加载循环依赖的规则链
+    info!("尝试加载循环依赖的规则链...");
     match engine.load_chain(CIRCULAR_CHAIN).await {
         Ok(_) => {
-            info!("规则链加载成功");
+            error!("错误: 成功加载了循环依赖的规则链!");
 
-            // 创建测试消息
+            // 如果加载成功，尝试执行看是否会死循环
+            info!("尝试执行循环依赖的规则链...");
             let msg = Message::new(
                 "test",
-                serde_json::json!({
+                json!({
                     "value": 1
                 }),
             );
 
-            // 尝试处理消息
             match engine.process_msg(msg).await {
-                Ok(result) => info!("处理结果: {:?}", result),
-                Err(e) => info!("处理失败: {:?}", e),
+                Ok(result) => info!("执行结果: {:?}", result),
+                Err(e) => info!("执行失败(预期行为): {}", e),
             }
         }
-        Err(e) => info!("规则链加载失败: {:?}", e),
+        Err(e) => info!("加载失败(预期行为): {}", e),
     }
 
     Ok(())

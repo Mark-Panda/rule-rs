@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 /// 节点拦截器
 #[async_trait]
-pub trait NodeInterceptor: Send + Sync {
+pub trait NodeInterceptor: Send + Sync + std::fmt::Debug {
     /// 节点执行前
     async fn before<'a>(&self, ctx: &NodeContext<'a>, msg: &Message) -> Result<(), RuleError>;
 
@@ -17,7 +17,7 @@ pub trait NodeInterceptor: Send + Sync {
 
 /// 消息拦截器
 #[async_trait]
-pub trait MessageInterceptor: Send + Sync {
+pub trait MessageInterceptor: Send + Sync + std::fmt::Debug {
     /// 消息处理前
     async fn before_process(&self, msg: &Message) -> Result<(), RuleError>;
 
@@ -26,6 +26,7 @@ pub trait MessageInterceptor: Send + Sync {
 }
 
 /// 拦截器管理器
+#[derive(Debug)]
 pub struct InterceptorManager {
     node_interceptors: Vec<Arc<dyn NodeInterceptor>>,
     msg_interceptors: Vec<Arc<dyn MessageInterceptor>>,

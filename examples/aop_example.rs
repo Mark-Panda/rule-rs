@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use rulego_rs::aop::{MessageInterceptor, NodeInterceptor};
 use rulego_rs::{Message, NodeContext, RuleEngine, RuleError};
+use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -10,6 +11,7 @@ use tracing::{info, Level};
 use tracing_subscriber;
 
 // 日志拦截器
+#[derive(Debug)]
 struct LoggingInterceptor;
 
 #[async_trait]
@@ -40,6 +42,7 @@ impl NodeInterceptor for LoggingInterceptor {
 }
 
 // 性能监控拦截器
+#[derive(Debug)]
 struct MetricsInterceptor {
     start_time: std::time::Instant,
 }
@@ -73,6 +76,7 @@ impl MessageInterceptor for MetricsInterceptor {
 }
 
 // 性能分析拦截器
+#[derive(Debug)]
 struct ProfilingInterceptor {
     start_times: Arc<Mutex<HashMap<String, Instant>>>,
     call_chains: Arc<Mutex<HashMap<String, Vec<String>>>>,
@@ -159,12 +163,13 @@ impl NodeInterceptor for ProfilingInterceptor {
 }
 
 // 统计拦截器
+#[derive(Debug)]
 struct StatsInterceptor {
-    stats: Arc<Mutex<HashMap<String, NodeStats>>>,
+    node_stats: Arc<Mutex<HashMap<String, NodeStats>>>,
     start_times: Arc<Mutex<HashMap<String, Instant>>>,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct NodeStats {
     total_calls: u64,
     total_errors: u64,
@@ -176,13 +181,13 @@ struct NodeStats {
 impl StatsInterceptor {
     fn new() -> Self {
         Self {
-            stats: Arc::new(Mutex::new(HashMap::new())),
+            node_stats: Arc::new(Mutex::new(HashMap::new())),
             start_times: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
     fn update_stats(&self, node_type: &str, duration: Duration, is_error: bool) {
-        let mut stats = self.stats.lock().unwrap();
+        let mut stats = self.node_stats.lock().unwrap();
         let node_stats = stats.entry(node_type.to_string()).or_default();
 
         node_stats.total_calls += 1;
@@ -209,7 +214,7 @@ impl StatsInterceptor {
     }
 
     fn print_stats(&self) {
-        let stats = self.stats.lock().unwrap();
+        let stats = self.node_stats.lock().unwrap();
         info!("\n=== 节点统计信息 ===");
         for (node_type, stats) in stats.iter() {
             let avg_duration = stats.total_duration.as_micros() as f64 / stats.total_calls as f64;
@@ -332,31 +337,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_max_level(Level::DEBUG)
         .init();
 
-    let engine = RuleEngine::new();
+    // 创建引擎实例并等待组件注册完成
+    let engine = RuleEngine::new().await;
+
+    // 创建统计拦截器
     let stats_interceptor = Arc::new(StatsInterceptor::new());
 
-    // 添加拦截器
+    // 注册节点拦截器
     engine
         .add_node_interceptor(Arc::new(LoggingInterceptor))
         .await;
+
     engine
         .add_node_interceptor(Arc::new(ProfilingInterceptor::new()))
         .await;
+
     engine.add_node_interceptor(stats_interceptor.clone()).await;
+
+    // 注册消息拦截器
     engine
         .add_msg_interceptor(Arc::new(MetricsInterceptor::new()))
         .await;
 
-    // 测试正常流程
-    info!("=== 测试正常流程 ===");
+    // 加载并执行正常规则链
+    let msg = Message::new("test", json!({"value": 1}));
     engine.load_chain(CHAIN_A).await?;
-    let msg = Message::new("test", serde_json::json!({ "value": 1 }));
     engine.process_msg(msg).await?;
 
-    // 测试错误流程
-    info!("\n=== 测试错误流程 ===");
+    // 加载并执行错误规则链
+    let msg = Message::new("test", json!({"value": 1}));
     engine.load_chain(ERROR_CHAIN).await?;
-    let msg = Message::new("test", serde_json::json!({ "value": 1 }));
     let _ = engine.process_msg(msg).await; // 忽略错误结果
 
     // 打印统计信息

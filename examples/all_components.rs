@@ -1,178 +1,188 @@
 use rulego_rs::{Message, RuleEngine};
+use serde_json::json;
 use tracing::{info, Level};
-
-// 子规则链：数据转换
-const SUB_CHAIN: &str = r#"{
-    "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3401",
-    "name": "数据转换子链",
-    "root": false,
-    "nodes": [
-        {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3402",
-            "type_name": "transform_js",
-            "config": {
-                "script": "const value = msg.value; return { celsius: value, fahrenheit: (value * 9/5) + 32 };"
-            },
-            "layout": { "x": 100, "y": 100 }
-        },
-        {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3403",
-            "type_name": "script",
-            "config": {
-                "script": "const data = msg.data; return { temperature: { value: data.celsius, unit: 'C' }, converted: { value: data.fahrenheit, unit: 'F' } };",
-                "output_type": "temperature_data"
-            },
-            "layout": { "x": 300, "y": 100 }
-        }
-    ],
-    "connections": [
-        {
-            "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3402",
-            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3403",
-            "type_name": "success"
-        }
-    ],
-    "metadata": {
-        "version": 1,
-        "created_at": 1679800000,
-        "updated_at": 1679800000
-    }
-}"#;
-
-// 主规则链
-const MAIN_CHAIN: &str = r#"{
-    "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
-    "name": "温度监控系统",
-    "root": true,
-    "nodes": [
-        {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
-            "type_name": "filter",
-            "config": {
-                "condition": "value > 0",
-                "js_script": null
-            },
-            "layout": { "x": 100, "y": 100 }
-        },
-        {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
-            "type_name": "subchain",
-            "config": {
-                "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3401",
-                "output_type": "converted_data"
-            },
-            "layout": { "x": 300, "y": 100 }
-        },
-        {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304",
-            "type_name": "switch",
-            "config": {
-                "cases": [
-                    {
-                        "condition": "msg.data.temperature.value > 30",
-                        "output": "high_temp"
-                    },
-                    {
-                        "condition": "msg.data.temperature.value < 10",
-                        "output": "low_temp"
-                    }
-                ],
-                "default": "normal_temp"
-            },
-            "layout": { "x": 500, "y": 100 }
-        },
-        {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3305",
-            "type_name": "rest_client",
-            "config": {
-                "url": "https://httpbin.org/get",
-                "method": "GET",
-                "headers": null,
-                "timeout_ms": 5000,
-                "output_type": "http_response"
-            },
-            "layout": { "x": 700, "y": 100 }
-        },
-        {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3306",
-            "type_name": "transform",
-            "config": {
-                "template": {
-                    "摄氏度": "${msg.data.temperature.value}°C",
-                    "华氏度": "${msg.data.converted.value}°F",
-                    "状态": "${msg.type}",
-                    "时间": "${msg.timestamp}"
-                }
-            },
-            "layout": { "x": 900, "y": 100 }
-        }
-    ],
-    "connections": [
-        {
-            "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
-            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
-            "type_name": "success"
-        },
-        {
-            "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
-            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304",
-            "type_name": "success"
-        },
-        {
-            "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304",
-            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3305",
-            "type_name": "success"
-        },
-        {
-            "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3305",
-            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3306",
-            "type_name": "success"
-        }
-    ],
-    "metadata": {
-        "version": 1,
-        "created_at": 1679800000,
-        "updated_at": 1679800000
-    }
-}"#;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 初始化日志
+    // 初始化日志系统
     tracing_subscriber::fmt()
         .with_max_level(Level::DEBUG)
         .init();
 
-    // 创建规则引擎实例
-    let engine = RuleEngine::new();
+    // 创建引擎实例并等待组件注册完成
+    let engine = RuleEngine::new().await;
 
-    // 先加载子规则链
-    engine.load_chain(SUB_CHAIN).await?;
+    // 完整的规则链配置
+    let chain_json = r#"{
+        "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
+        "name": "完整示例规则链",
+        "root": true,
+        "nodes": [
+            {
+                "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
+                "type_name": "script",
+                "config": {
+                    "script": "return { value: msg.data.value + 1, type: msg.type };"
+                },
+                "layout": { "x": 100, "y": 100 }
+            },
+            {
+                "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
+                "type_name": "filter",
+                "config": {
+                    "condition": "msg.value > 10",
+                    "checkFields": ["value", "type"],
+                    "strict": false
+                },
+                "layout": { "x": 300, "y": 100 }
+            },
+            {
+                "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304",
+                "type_name": "transform",
+                "config": {
+                    "fields": {
+                        "transformed_value": "${msg.value * 2}",
+                        "timestamp": "${Date.now()}",
+                        "source": "transform_node"
+                    },
+                    "dropFields": ["temp_field"]
+                },
+                "layout": { "x": 500, "y": 100 }
+            },
+            {
+                "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3305",
+                "type_name": "transform_js",
+                "config": {
+                    "script": "function transform(msg) { return { ...msg, processed: true, processed_time: new Date().toISOString() }; }"
+                },
+                "layout": { "x": 700, "y": 100 }
+            },
+            {
+                "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3306",
+                "type_name": "switch",
+                "config": {
+                    "conditions": [
+                        {
+                            "condition": "msg.value > 20",
+                            "next": "high_value"
+                        },
+                        {
+                            "condition": "msg.value > 10",
+                            "next": "medium_value"
+                        }
+                    ],
+                    "default": "low_value"
+                },
+                "layout": { "x": 900, "y": 100 }
+            },
+            {
+                "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3307",
+                "type_name": "rest_client",
+                "config": {
+                    "url": "https://api.example.com/data",
+                    "method": "POST",
+                    "headers": {
+                        "Content-Type": "application/json",
+                        "Authorization": "Bearer ${msg.token}"
+                    },
+                    "params": {
+                        "id": "${msg.id}",
+                        "type": "${msg.type}"
+                    },
+                    "body": {
+                        "data": "${msg}",
+                        "timestamp": "${Date.now()}"
+                    },
+                    "timeout": 5000,
+                    "retry": {
+                        "maxAttempts": 3,
+                        "delay": 1000
+                    }
+                },
+                "layout": { "x": 1100, "y": 100 }
+            },
+            {
+                "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3308",
+                "type_name": "weather",
+                "config": {
+                    "api_key": "your_api_key_here",
+                    "city": "${msg.city}",
+                    "language": "zh"
+                },
+                "layout": { "x": 1300, "y": 100 }
+            },
+            {
+                "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3309",
+                "type_name": "log",
+                "config": {
+                    "template": "处理结果 - ID: ${msg.id}, 类型: ${msg.type}, 值: ${msg.value}, 天气: ${msg.weather}",
+                    "level": "info"
+                },
+                "layout": { "x": 1500, "y": 100 }
+            }
+        ],
+        "connections": [
+            {
+                "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
+                "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
+                "type_name": "success"
+            },
+            {
+                "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
+                "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304",
+                "type_name": "success"
+            },
+            {
+                "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304",
+                "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3305",
+                "type_name": "success"
+            },
+            {
+                "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3305",
+                "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3306",
+                "type_name": "success"
+            },
+            {
+                "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3306",
+                "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3307",
+                "type_name": "high_value"
+            },
+            {
+                "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3307",
+                "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3308",
+                "type_name": "success"
+            },
+            {
+                "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3308",
+                "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3309",
+                "type_name": "success"
+            }
+        ],
+        "metadata": {
+            "version": 1,
+            "created_at": 1679800000,
+            "updated_at": 1679800000
+        }
+    }"#;
 
-    // 再加载主规则链
-    engine.load_chain(MAIN_CHAIN).await?;
+    // 加载规则链
+    let chain_id = engine.load_chain(chain_json).await?;
+    info!("规则链加载成功: {}", chain_id);
 
-    info!(
-        "规则链加载完成, 版本: {}",
-        engine.get_current_version().await
-    );
-
-    // 创建测试消息
+    // 处理消息
     let msg = Message::new(
-        "temperature",
-        serde_json::json!({
-            "value": 25.0,
-            "unit": "C"
+        "test",
+        json!({
+            "value": 25,
+            "city": "Shanghai",
+            "token": "test_token",
+            "type": "example"
         }),
     );
 
     info!("开始处理消息: {:?}", msg);
-
-    // 处理消息
-    match engine.process_msg(msg).await {
-        Ok(result) => info!("处理结果: {:?}", result),
-        Err(e) => eprintln!("处理失败: {:?}", e),
-    }
+    let result = engine.process_msg(msg).await?;
+    info!("处理结果: {:?}", result);
 
     Ok(())
 }

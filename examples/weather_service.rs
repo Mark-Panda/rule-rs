@@ -9,7 +9,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_max_level(Level::DEBUG)
         .init();
 
-    let engine = RuleEngine::new();
+    // 创建引擎实例并等待组件注册完成
+    let engine = RuleEngine::new().await;
 
     // 加载包含天气节点的规则链
     let chain_json = r#"{

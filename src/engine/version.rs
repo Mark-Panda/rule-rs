@@ -1,6 +1,7 @@
 use crate::types::RuleChain;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+#[derive(Debug)]
 pub struct VersionManager {
     current_version: AtomicU64,
 }

@@ -1,4 +1,5 @@
 use thiserror::Error;
+use uuid::Uuid;
 
 #[derive(Error, Debug)]
 pub enum RuleError {
@@ -19,4 +20,7 @@ pub enum RuleError {
 
     #[error("循环依赖: {0}")]
     CircularDependency(String),
+
+    #[error("规则链未找到: {0}")]
+    ChainNotFound(Uuid),
 }

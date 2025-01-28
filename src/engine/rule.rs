@@ -1,11 +1,13 @@
 use crate::aop::{InterceptorManager, MessageInterceptor, NodeInterceptor};
 use crate::components::{
     FilterConfig, FilterNode, LogConfig, LogNode, RestClientConfig, RestClientNode, ScriptConfig,
-    ScriptNode, SubchainConfig, SwitchConfig, SwitchNode, TransformConfig, TransformJsConfig,
-    TransformJsNode, TransformNode, WeatherConfig, WeatherNode,
+    ScriptNode, SubchainConfig, SubchainNode, SwitchConfig, SwitchNode, TransformConfig,
+    TransformJsConfig, TransformJsNode, TransformNode, WeatherConfig, WeatherNode,
 };
 use crate::engine::{NodeFactory, NodeHandler, NodeRegistry, VersionManager};
-use crate::types::{ExecutionContext, Message, Node, NodeContext, RuleChain, RuleError};
+use crate::types::{
+    ExecutionContext, Message, Node, NodeContext, NodeDescriptor, RuleChain, RuleError,
+};
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::pin::Pin;
@@ -13,88 +15,90 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct RuleEngine {
-    chains: Arc<RwLock<HashMap<Uuid, Arc<RuleChain>>>>,
+    pub(crate) chains: Arc<RwLock<HashMap<Uuid, Arc<RuleChain>>>>,
     node_registry: Arc<NodeRegistry>,
     version_manager: Arc<VersionManager>,
     interceptor_manager: Arc<RwLock<InterceptorManager>>,
 }
 
 impl RuleEngine {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         let node_registry = Arc::new(NodeRegistry::new());
+        let registry = node_registry.clone();
 
         // 注册内置组件
-        tokio::spawn({
-            let registry = node_registry.clone();
-            async move {
-                // 注册所有组件工厂
-                let factories: Vec<(&str, NodeFactory)> = vec![
-                    (
-                        "log",
-                        Arc::new(|config| {
-                            let config: LogConfig = serde_json::from_value(config)?;
-                            Ok(Arc::new(LogNode::new(config)) as Arc<dyn NodeHandler>)
-                        }),
-                    ),
-                    (
-                        "filter",
-                        Arc::new(|config| {
-                            let config: FilterConfig = serde_json::from_value(config)?;
-                            Ok(Arc::new(FilterNode::new(config)) as Arc<dyn NodeHandler>)
-                        }),
-                    ),
-                    (
-                        "transform",
-                        Arc::new(|config| {
-                            let config: TransformConfig = serde_json::from_value(config)?;
-                            Ok(Arc::new(TransformNode::new(config)) as Arc<dyn NodeHandler>)
-                        }),
-                    ),
-                    (
-                        "transform_js",
-                        Arc::new(|config| {
-                            let config: TransformJsConfig = serde_json::from_value(config)?;
-                            Ok(Arc::new(TransformJsNode::new(config)) as Arc<dyn NodeHandler>)
-                        }),
-                    ),
-                    (
-                        "script",
-                        Arc::new(|config| {
-                            let config: ScriptConfig = serde_json::from_value(config)?;
-                            Ok(Arc::new(ScriptNode::new(config)) as Arc<dyn NodeHandler>)
-                        }),
-                    ),
-                    (
-                        "switch",
-                        Arc::new(|config| {
-                            let config: SwitchConfig = serde_json::from_value(config)?;
-                            Ok(Arc::new(SwitchNode::new(config)) as Arc<dyn NodeHandler>)
-                        }),
-                    ),
-                    (
-                        "rest_client",
-                        Arc::new(|config| {
-                            let config: RestClientConfig = serde_json::from_value(config)?;
-                            Ok(Arc::new(RestClientNode::new(config)) as Arc<dyn NodeHandler>)
-                        }),
-                    ),
-                    (
-                        "weather",
-                        Arc::new(|config| {
-                            let config: WeatherConfig = serde_json::from_value(config)?;
-                            Ok(Arc::new(WeatherNode::new(config)) as Arc<dyn NodeHandler>)
-                        }),
-                    ),
-                ];
+        let factories: Vec<(&str, NodeFactory)> = vec![
+            (
+                "log",
+                Arc::new(|config| {
+                    let config: LogConfig = serde_json::from_value(config)?;
+                    Ok(Arc::new(LogNode::new(config)) as Arc<dyn NodeHandler>)
+                }),
+            ),
+            (
+                "filter",
+                Arc::new(|config| {
+                    let config: FilterConfig = serde_json::from_value(config)?;
+                    Ok(Arc::new(FilterNode::new(config)) as Arc<dyn NodeHandler>)
+                }),
+            ),
+            (
+                "transform",
+                Arc::new(|config| {
+                    let config: TransformConfig = serde_json::from_value(config)?;
+                    Ok(Arc::new(TransformNode::new(config)) as Arc<dyn NodeHandler>)
+                }),
+            ),
+            (
+                "transform_js",
+                Arc::new(|config| {
+                    let config: TransformJsConfig = serde_json::from_value(config)?;
+                    Ok(Arc::new(TransformJsNode::new(config)) as Arc<dyn NodeHandler>)
+                }),
+            ),
+            (
+                "script",
+                Arc::new(|config| {
+                    let config: ScriptConfig = serde_json::from_value(config)?;
+                    Ok(Arc::new(ScriptNode::new(config)) as Arc<dyn NodeHandler>)
+                }),
+            ),
+            (
+                "switch",
+                Arc::new(|config| {
+                    let config: SwitchConfig = serde_json::from_value(config)?;
+                    Ok(Arc::new(SwitchNode::new(config)) as Arc<dyn NodeHandler>)
+                }),
+            ),
+            (
+                "rest_client",
+                Arc::new(|config| {
+                    let config: RestClientConfig = serde_json::from_value(config)?;
+                    Ok(Arc::new(RestClientNode::new(config)) as Arc<dyn NodeHandler>)
+                }),
+            ),
+            (
+                "weather",
+                Arc::new(|config| {
+                    let config: WeatherConfig = serde_json::from_value(config)?;
+                    Ok(Arc::new(WeatherNode::new(config)) as Arc<dyn NodeHandler>)
+                }),
+            ),
+            (
+                "subchain",
+                Arc::new(|config| {
+                    let config: SubchainConfig = serde_json::from_value(config)?;
+                    Ok(Arc::new(SubchainNode::new(config)) as Arc<dyn NodeHandler>)
+                }),
+            ),
+        ];
 
-                // 注册所有工厂
-                for (type_name, factory) in factories {
-                    registry.register(type_name, factory).await;
-                }
-            }
-        });
+        // 直接注册所有工厂
+        for (type_name, factory) in factories {
+            registry.register(type_name, factory).await;
+        }
 
         Self {
             chains: Arc::new(RwLock::new(HashMap::new())),
@@ -222,7 +226,7 @@ impl RuleEngine {
         Ok(())
     }
 
-    pub async fn load_chain(&self, content: &str) -> Result<(), RuleError> {
+    pub async fn load_chain(&self, content: &str) -> Result<Uuid, RuleError> {
         let chain: RuleChain =
             serde_json::from_str(content).map_err(|e| RuleError::ConfigError(e.to_string()))?;
 
@@ -237,8 +241,10 @@ impl RuleEngine {
         chain.metadata.version = version.version;
         chain.metadata.updated_at = version.timestamp;
 
-        self.chains.write().await.insert(chain.id, Arc::new(chain));
-        Ok(())
+        let id = chain.id;
+        self.chains.write().await.insert(id, Arc::new(chain));
+
+        Ok(id)
     }
 
     pub async fn load_chain_from_file(&self, path: &str) -> Result<(), RuleError> {
@@ -246,7 +252,8 @@ impl RuleEngine {
             .await
             .map_err(|e| RuleError::ConfigError(e.to_string()))?;
 
-        self.load_chain(&content).await
+        self.load_chain(&content).await?;
+        Ok(())
     }
 
     pub async fn add_node_interceptor(&self, interceptor: Arc<dyn NodeInterceptor>) {
@@ -298,10 +305,10 @@ impl RuleEngine {
 
         while let Some(node) = current_node {
             // 创建节点上下文
-            let node_ctx = NodeContext::new(node, ctx);
+            let node_ctx = NodeContext::new(node, ctx, Arc::new(self.clone()));
 
             // 执行节点逻辑
-            ctx.msg = self.execute_node(node, node_ctx, ctx.msg.clone()).await?;
+            ctx.msg = self.execute_node(node, &node_ctx, ctx.msg.clone()).await?;
 
             // 获取下一个节点
             current_node = chain.get_next_node(&node.id, &ctx)?;
@@ -313,7 +320,7 @@ impl RuleEngine {
     async fn execute_node<'a>(
         &self,
         node: &'a Node,
-        ctx: NodeContext<'a>,
+        ctx: &NodeContext<'a>,
         msg: Message,
     ) -> Result<Message, RuleError> {
         let manager = self.interceptor_manager.read().await;
@@ -326,18 +333,18 @@ impl RuleEngine {
             .ok_or_else(|| RuleError::HandlerNotFound(node.type_name.clone()))?;
 
         // 节点执行前拦截
-        manager.before_node(&ctx, &msg).await?;
+        manager.before_node(ctx, &msg).await?;
 
         // 执行节点
         let result = match handler.handle(ctx.clone(), msg.clone()).await {
             Ok(result) => {
                 // 节点执行后拦截
-                manager.after_node(&ctx, &result).await?;
+                manager.after_node(ctx, &result).await?;
                 Ok(result)
             }
             Err(e) => {
                 // 节点错误拦截
-                manager.node_error(&ctx, &e).await?;
+                manager.node_error(ctx, &e).await?;
                 Err(e)
             }
         };
@@ -349,8 +356,52 @@ impl RuleEngine {
         self.version_manager.get_current_version()
     }
 
+    /// 获取所有已注册的组件类型
+    pub async fn get_registered_components(&self) -> Vec<NodeDescriptor> {
+        self.node_registry.get_descriptors().await
+    }
+
+    /// 获取所有已加载的规则链
+    pub async fn get_loaded_chains(&self) -> Vec<Arc<RuleChain>> {
+        self.chains.read().await.values().cloned().collect()
+    }
+
+    /// 获取指定ID的规则链
     pub async fn get_chain(&self, id: Uuid) -> Option<Arc<RuleChain>> {
         self.chains.read().await.get(&id).cloned()
+    }
+
+    /// 删除规则链
+    pub async fn remove_chain(&self, id: Uuid) -> Result<(), RuleError> {
+        let mut chains = self.chains.write().await;
+
+        // 检查是否为根规则链
+        if let Some(chain) = chains.get(&id) {
+            if chain.root {
+                return Err(RuleError::ConfigError(
+                    "Cannot delete root chain".to_string(),
+                ));
+            }
+        }
+
+        // 检查是否被其他规则链引用
+        for chain in chains.values() {
+            for node in &chain.nodes {
+                if let Ok(config) = serde_json::from_value::<SubchainConfig>(node.config.clone()) {
+                    if config.chain_id == id {
+                        return Err(RuleError::ConfigError(format!(
+                            "Chain {} is referenced by chain {}",
+                            id, chain.id
+                        )));
+                    }
+                }
+            }
+        }
+
+        chains
+            .remove(&id)
+            .ok_or_else(|| RuleError::ChainNotFound(id))?;
+        Ok(())
     }
 }
 
