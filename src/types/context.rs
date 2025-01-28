@@ -27,6 +27,26 @@ impl<'a> NodeContext<'a> {
             metadata: self.metadata.clone(),
         }
     }
+
+    pub async fn send_next(&self, msg: Message) -> Result<(), RuleError> {
+        // 获取当前节点的规则链
+        let chain = self
+            .engine
+            .get_chain(self.node.chain_id)
+            .await
+            .ok_or_else(|| RuleError::ChainNotFound(self.node.chain_id))?;
+
+        // 获取下一个节点
+        let next_node = chain.get_next_node(&self.node.id, &self.create_subchain_context())?;
+
+        // 如果有下一个节点，则执行
+        if let Some(node) = next_node {
+            let ctx = NodeContext::new(node, &self.create_subchain_context(), self.engine.clone());
+            self.engine.execute_node(node, &ctx, msg).await?;
+        }
+
+        Ok(())
+    }
 }
 
 pub struct ExecutionContext {

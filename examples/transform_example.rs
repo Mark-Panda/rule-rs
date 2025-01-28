@@ -4,15 +4,18 @@ use tracing::{info, Level};
 
 const RULE_CHAIN: &str = r#"{
     "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
-    "name": "简单示例",
+    "name": "转换器示例",
     "root": true,
     "nodes": [
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
-            "type_name": "script",
+            "type_name": "transform",
             "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
-                "script": "return { value: msg.data.value + 1 };"
+                "fields": {
+                    "new_value": "${msg.data.value * 2}",
+                    "timestamp": "${Date.now()}"
+                }
             },
             "layout": { "x": 100, "y": 100 }
         },
@@ -21,7 +24,7 @@ const RULE_CHAIN: &str = r#"{
             "type_name": "log",
             "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
-                "template": "处理结果: ${msg.data.value}"
+                "template": "转换后的消息: ${msg.data.new_value}, 时间: ${msg.data.timestamp}"
             },
             "layout": { "x": 300, "y": 100 }
         }
@@ -61,7 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let msg = Message::new(
         "test",
         json!({
-            "value": 1
+            "value": 100
         }),
     );
 

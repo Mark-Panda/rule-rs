@@ -4,31 +4,33 @@ use tracing::{error, info, Level};
 
 // 规则链 A
 const CHAIN_A: &str = r#"{
-    "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
-    "name": "规则链 A",
+    "id": "chain-a",
+    "name": "Chain A",
     "root": true,
     "nodes": [
         {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
-            "type_name": "script",
+            "id": "node-a1",
+            "type_name": "log",
+            "chain_id": "chain-a",
             "config": {
-                "script": "return { value: msg.data.value + 1 };"
+                "template": "Chain A -> Chain B"
             },
             "layout": { "x": 100, "y": 100 }
         },
         {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
+            "id": "node-a2",
             "type_name": "subchain",
+            "chain_id": "chain-a",
             "config": {
-                "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3401"
+                "chain_id": "chain-b"
             },
             "layout": { "x": 300, "y": 100 }
         }
     ],
     "connections": [
         {
-            "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
-            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
+            "from_id": "node-a1",
+            "to_id": "node-a2",
             "type_name": "success"
         }
     ],
@@ -41,31 +43,33 @@ const CHAIN_A: &str = r#"{
 
 // 规则链 B
 const CHAIN_B: &str = r#"{
-    "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3401",
-    "name": "规则链 B",
+    "id": "chain-b",
+    "name": "Chain B",
     "root": false,
     "nodes": [
         {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3402",
-            "type_name": "script",
+            "id": "node-b1",
+            "type_name": "log",
+            "chain_id": "chain-b",
             "config": {
-                "script": "return { value: msg.data.value * 2 };"
+                "template": "Chain B -> Chain C"
             },
             "layout": { "x": 100, "y": 100 }
         },
         {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3403",
+            "id": "node-b2",
             "type_name": "subchain",
+            "chain_id": "chain-b",
             "config": {
-                "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3501"
+                "chain_id": "chain-c"
             },
             "layout": { "x": 300, "y": 100 }
         }
     ],
     "connections": [
         {
-            "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3402",
-            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3403",
+            "from_id": "node-b1",
+            "to_id": "node-b2",
             "type_name": "success"
         }
     ],
@@ -78,31 +82,33 @@ const CHAIN_B: &str = r#"{
 
 // 规则链 C
 const CHAIN_C: &str = r#"{
-    "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3501",
-    "name": "规则链 C",
+    "id": "chain-c",
+    "name": "Chain C",
     "root": false,
     "nodes": [
         {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3502",
-            "type_name": "script",
+            "id": "node-c1",
+            "type_name": "log",
+            "chain_id": "chain-c",
             "config": {
-                "script": "return { value: msg.data.value + 3 };"
+                "template": "Chain C -> Chain A"
             },
             "layout": { "x": 100, "y": 100 }
         },
         {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3503",
+            "id": "node-c2",
             "type_name": "subchain",
+            "chain_id": "chain-c",
             "config": {
-                "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301"
+                "chain_id": "chain-a"
             },
             "layout": { "x": 300, "y": 100 }
         }
     ],
     "connections": [
         {
-            "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3502",
-            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3503",
+            "from_id": "node-c1",
+            "to_id": "node-c2",
             "type_name": "success"
         }
     ],

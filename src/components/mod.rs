@@ -1,3 +1,4 @@
+mod delay;
 mod filter;
 mod log;
 mod rest_client;
@@ -8,6 +9,7 @@ mod transform;
 mod transform_js;
 mod weather;
 
+pub use delay::{DelayConfig, DelayNode};
 pub use filter::{FilterConfig, FilterNode};
 pub use log::*;
 pub use rest_client::{RestClientConfig, RestClientNode};

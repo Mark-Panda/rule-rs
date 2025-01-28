@@ -4,15 +4,17 @@ use tracing::{info, Level};
 
 const RULE_CHAIN: &str = r#"{
     "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
-    "name": "简单示例",
+    "name": "Cron定时示例",
     "root": true,
     "nodes": [
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
-            "type_name": "script",
+            "type_name": "delay",
             "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
-                "script": "return { value: msg.data.value + 1 };"
+                "cron": "*/20 * * * * *",
+                "periodic": true,
+                "timezone_offset": 8
             },
             "layout": { "x": 100, "y": 100 }
         },
@@ -21,7 +23,7 @@ const RULE_CHAIN: &str = r#"{
             "type_name": "log",
             "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
-                "template": "处理结果: ${msg.data.value}"
+                "template": "定时任务执行: ${msg.data.task}, 执行时间: ${new Date().toLocaleString('zh-CN', {hour12: false})}"
             },
             "layout": { "x": 300, "y": 100 }
         }
@@ -59,9 +61,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 创建测试消息
     let msg = Message::new(
-        "test",
+        "schedule",
         json!({
-            "value": 1
+            "task": "periodic_task"
         }),
     );
 
@@ -71,5 +73,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(e) => info!("处理失败: {:?}", e),
     }
 
-    Ok(())
+    // 保持程序运行以观察定时执行
+    loop {
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    }
 }

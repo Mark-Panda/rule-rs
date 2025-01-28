@@ -4,15 +4,17 @@ use tracing::{info, Level};
 
 const RULE_CHAIN: &str = r#"{
     "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
-    "name": "简单示例",
+    "name": "延迟示例",
     "root": true,
     "nodes": [
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
-            "type_name": "script",
+            "type_name": "delay",
             "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
-                "script": "return { value: msg.data.value + 1 };"
+                "delay_ms": 2000,
+                "periodic": true,
+                "period_count": 3
             },
             "layout": { "x": 100, "y": 100 }
         },
@@ -21,7 +23,7 @@ const RULE_CHAIN: &str = r#"{
             "type_name": "log",
             "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
-                "template": "处理结果: ${msg.data.value}"
+                "template": "延迟消息: ${msg.data.value}"
             },
             "layout": { "x": 300, "y": 100 }
         }
@@ -61,7 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let msg = Message::new(
         "test",
         json!({
-            "value": 1
+            "value": "hello"
         }),
     );
 
@@ -70,6 +72,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(result) => info!("处理结果: {:?}", result),
         Err(e) => info!("处理失败: {:?}", e),
     }
+
+    // 等待一段时间以便观察周期性消息
+    tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
 
     Ok(())
 }

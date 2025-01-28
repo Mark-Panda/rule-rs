@@ -59,11 +59,11 @@ impl ScriptNode {
                 "#,
                     msg_json, ctx_obj, self.config.script
                 );
-
+                println!("js code: {}", js_code);
                 let result: String = ctx.eval(js_code).map_err(|e| {
                     RuleError::NodeExecutionError(format!("JavaScript执行错误: {}", e))
                 })?;
-
+                println!("script result: {}", result);
                 serde_json::from_str(&result)
                     .map_err(|e| RuleError::NodeExecutionError(format!("JSON解析错误: {}", e)))
             })

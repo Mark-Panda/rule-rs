@@ -1,8 +1,9 @@
 use crate::aop::{InterceptorManager, MessageInterceptor, NodeInterceptor};
 use crate::components::{
-    FilterConfig, FilterNode, LogConfig, LogNode, RestClientConfig, RestClientNode, ScriptConfig,
-    ScriptNode, SubchainConfig, SubchainNode, SwitchConfig, SwitchNode, TransformConfig,
-    TransformJsConfig, TransformJsNode, TransformNode, WeatherConfig, WeatherNode,
+    DelayConfig, DelayNode, FilterConfig, FilterNode, LogConfig, LogNode, RestClientConfig,
+    RestClientNode, ScriptConfig, ScriptNode, SubchainConfig, SubchainNode, SwitchConfig,
+    SwitchNode, TransformConfig, TransformJsConfig, TransformJsNode, TransformNode, WeatherConfig,
+    WeatherNode,
 };
 use crate::engine::{NodeFactory, NodeHandler, NodeRegistry, VersionManager};
 use crate::types::{
@@ -35,6 +36,14 @@ impl RuleEngine {
                 Arc::new(|config| {
                     let config: LogConfig = serde_json::from_value(config)?;
                     Ok(Arc::new(LogNode::new(config)) as Arc<dyn NodeHandler>)
+                }),
+            ),
+            (
+                "delay",
+                Arc::new(|config| {
+                    let config: DelayConfig = serde_json::from_value(config)?;
+                    let node = DelayNode::new(config)?;
+                    Ok(Arc::new(node) as Arc<dyn NodeHandler>)
                 }),
             ),
             (
@@ -317,7 +326,7 @@ impl RuleEngine {
         Ok(ctx.msg.clone())
     }
 
-    async fn execute_node<'a>(
+    pub async fn execute_node<'a>(
         &self,
         node: &'a Node,
         ctx: &NodeContext<'a>,
@@ -338,12 +347,10 @@ impl RuleEngine {
         // 执行节点
         let result = match handler.handle(ctx.clone(), msg.clone()).await {
             Ok(result) => {
-                // 节点执行后拦截
                 manager.after_node(ctx, &result).await?;
                 Ok(result)
             }
             Err(e) => {
-                // 节点错误拦截
                 manager.node_error(ctx, &e).await?;
                 Err(e)
             }

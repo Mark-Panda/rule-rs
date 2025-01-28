@@ -2,11 +2,13 @@ mod context;
 mod descriptor;
 mod error;
 mod message;
+mod node;
 
 pub use context::*;
 pub use descriptor::*;
 pub use error::*;
 pub use message::*;
+pub use node::*;
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -22,28 +24,12 @@ pub struct RuleChain {
     pub metadata: Metadata,
 }
 
-// 节点定义
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Node {
-    pub id: Uuid,
-    pub type_name: String,
-    pub config: serde_json::Value,
-    pub layout: Position,
-}
-
 // 连接定义
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Connection {
     pub from_id: Uuid,
     pub to_id: Uuid,
     pub type_name: String,
-}
-
-// 位置信息
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Position {
-    pub x: f32,
-    pub y: f32,
 }
 
 // 元数据

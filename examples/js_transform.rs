@@ -10,6 +10,7 @@ const RULE_CHAIN: &str = r#"{
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
             "type_name": "transform_js",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
                 "script": "const celsius = msg.data.value; const fahrenheit = (celsius * 9/5) + 32; return { data: { celsius: celsius, fahrenheit: fahrenheit } };"
             },
@@ -18,6 +19,7 @@ const RULE_CHAIN: &str = r#"{
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
             "type_name": "log",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
                 "template": "温度转换: ${msg.data.celsius}°C = ${msg.data.fahrenheit}°F"
             },
@@ -59,7 +61,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let msg = Message::new(
         "temperature",
         json!({
-            "value": 25
+            "data": {
+                "value": 25
+            }
         }),
     );
 
