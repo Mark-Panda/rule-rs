@@ -40,7 +40,7 @@ impl FilterNode {
 
 #[async_trait]
 impl NodeHandler for FilterNode {
-    async fn handle(&self, ctx: NodeContext, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
         if self.eval_condition(&ctx, &msg)? {
             Ok(msg)
         } else {

@@ -1,3 +1,4 @@
+use crate::aop::{InterceptorManager, MessageInterceptor, NodeInterceptor};
 use crate::components::{
     FilterConfig, FilterNode, RestClientConfig, RestClientNode, ScriptConfig, ScriptNode,
     SubchainConfig, SubchainNode, SwitchConfig, SwitchNode, TransformConfig, TransformJsConfig,
@@ -17,6 +18,7 @@ pub struct RuleEngine {
     chains: Arc<RwLock<HashMap<Uuid, Arc<RuleChain>>>>,
     node_registry: Arc<NodeRegistry>,
     version_manager: Arc<VersionManager>,
+    interceptor_manager: Arc<RwLock<InterceptorManager>>,
 }
 
 impl RuleEngine {
@@ -26,6 +28,7 @@ impl RuleEngine {
             chains: Arc::new(RwLock::new(HashMap::new())),
             node_registry,
             version_manager: Arc::new(VersionManager::new()),
+            interceptor_manager: Arc::new(RwLock::new(InterceptorManager::new())),
         }
     }
 
@@ -228,7 +231,26 @@ impl RuleEngine {
         self.load_chain(&content).await
     }
 
+    pub async fn add_node_interceptor(&self, interceptor: Arc<dyn NodeInterceptor>) {
+        self.interceptor_manager
+            .write()
+            .await
+            .add_node_interceptor(interceptor);
+    }
+
+    pub async fn add_msg_interceptor(&self, interceptor: Arc<dyn MessageInterceptor>) {
+        self.interceptor_manager
+            .write()
+            .await
+            .add_msg_interceptor(interceptor);
+    }
+
     pub async fn process_msg(&self, msg: Message) -> Result<Message, RuleError> {
+        let manager = self.interceptor_manager.read().await;
+
+        // 消息处理前拦截
+        manager.before_process(&msg).await?;
+
         let chains = self.chains.read().await;
 
         // 查找根规则链
@@ -238,38 +260,71 @@ impl RuleEngine {
             .ok_or(RuleError::NoRootChain)?;
 
         // 创建执行上下文
-        let ctx = ExecutionContext::new(msg);
+        let mut ctx = ExecutionContext::new(msg.clone());
 
         // 执行规则链
-        self.execute_chain(root_chain, ctx).await
+        let result = self.execute_chain(root_chain, &mut ctx).await?;
+
+        // 消息处理后拦截
+        manager.after_process(&msg).await?;
+
+        Ok(result)
     }
 
     pub async fn execute_chain(
         &self,
         chain: &RuleChain,
-        mut ctx: ExecutionContext,
+        ctx: &mut ExecutionContext,
     ) -> Result<Message, RuleError> {
         let mut current_node = chain.get_start_node()?;
 
         while let Some(node) = current_node {
-            // 获取节点处理器
-            let handler = self
-                .node_registry
-                .get_handler(&node.type_name)
-                .await
-                .ok_or_else(|| RuleError::HandlerNotFound(node.type_name.clone()))?;
-
             // 创建节点上下文
-            let node_ctx = NodeContext::new(&node, &ctx);
+            let node_ctx = NodeContext::new(node, ctx);
 
             // 执行节点逻辑
-            ctx.msg = handler.handle(node_ctx, ctx.msg).await?;
+            ctx.msg = self.execute_node(node, node_ctx, ctx.msg.clone()).await?;
 
             // 获取下一个节点
             current_node = chain.get_next_node(&node.id, &ctx)?;
         }
 
-        Ok(ctx.msg)
+        Ok(ctx.msg.clone())
+    }
+
+    async fn execute_node<'a>(
+        &self,
+        node: &'a Node,
+        ctx: NodeContext<'a>,
+        msg: Message,
+    ) -> Result<Message, RuleError> {
+        let manager = self.interceptor_manager.read().await;
+
+        // 获取节点处理器
+        let handler = self
+            .node_registry
+            .get_handler(&node.type_name)
+            .await
+            .ok_or_else(|| RuleError::HandlerNotFound(node.type_name.clone()))?;
+
+        // 节点执行前拦截
+        manager.before_node(&ctx, &msg).await?;
+
+        // 执行节点
+        let result = match handler.handle(ctx.clone(), msg.clone()).await {
+            Ok(result) => {
+                // 节点执行后拦截
+                manager.after_node(&ctx, &result).await?;
+                Ok(result)
+            }
+            Err(e) => {
+                // 节点错误拦截
+                manager.node_error(&ctx, &e).await?;
+                Err(e)
+            }
+        };
+
+        result
     }
 
     pub async fn get_current_version(&self) -> u64 {

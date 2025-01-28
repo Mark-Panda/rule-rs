@@ -6,7 +6,7 @@ use tokio::sync::RwLock;
 
 #[async_trait]
 pub trait NodeHandler: Send + Sync {
-    async fn handle(&self, ctx: NodeContext, msg: Message) -> Result<Message, RuleError>;
+    async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError>;
     fn get_descriptor(&self) -> NodeDescriptor;
 }
 

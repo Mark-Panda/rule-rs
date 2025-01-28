@@ -73,16 +73,11 @@ impl ScriptNode {
 
 #[async_trait]
 impl NodeHandler for ScriptNode {
-    async fn handle(&self, ctx: NodeContext, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
         let new_data = self.execute_script(&ctx, &msg)?;
-
         Ok(Message {
             id: msg.id,
-            msg_type: self
-                .config
-                .output_type
-                .clone()
-                .unwrap_or_else(|| "script_result".to_string()),
+            msg_type: self.config.output_type.clone().unwrap_or(msg.msg_type),
             metadata: msg.metadata,
             data: new_data,
             timestamp: msg.timestamp,

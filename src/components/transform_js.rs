@@ -53,12 +53,11 @@ impl TransformJsNode {
 
 #[async_trait]
 impl NodeHandler for TransformJsNode {
-    async fn handle(&self, _ctx: NodeContext, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(&self, _ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
         let new_data = self.execute_js(&msg)?;
-
         Ok(Message {
             id: msg.id,
-            msg_type: "transformed".to_string(),
+            msg_type: msg.msg_type,
             metadata: msg.metadata,
             data: new_data,
             timestamp: msg.timestamp,

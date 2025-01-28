@@ -1,7 +1,7 @@
 mod node;
-mod rule;
+pub mod rule;
 mod version;
 
 pub use node::*;
-pub use rule::*;
+pub use rule::RuleEngine;
 pub use version::*;

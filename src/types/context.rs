@@ -1,15 +1,16 @@
 use super::*;
 use std::sync::Arc;
 
-pub struct NodeContext {
-    pub node: Arc<Node>,
+#[derive(Debug, Clone)]
+pub struct NodeContext<'a> {
+    pub node: &'a Node,
     pub metadata: HashMap<String, String>,
 }
 
-impl NodeContext {
-    pub fn new(node: &Node, ctx: &ExecutionContext) -> Self {
+impl<'a> NodeContext<'a> {
+    pub fn new(node: &'a Node, ctx: &ExecutionContext) -> Self {
         Self {
-            node: Arc::new(node.clone()),
+            node,
             metadata: ctx.metadata.clone(),
         }
     }

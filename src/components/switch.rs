@@ -48,8 +48,7 @@ impl SwitchNode {
 
 #[async_trait]
 impl NodeHandler for SwitchNode {
-    async fn handle(&self, _ctx: NodeContext, msg: Message) -> Result<Message, RuleError> {
-        // 遍历所有 case
+    async fn handle<'a>(&self, _ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
         for case in &self.config.cases {
             if self.evaluate_case(case, &msg)? {
                 return Ok(Message {
@@ -62,20 +61,14 @@ impl NodeHandler for SwitchNode {
             }
         }
 
-        // 如果没有匹配的 case，使用默认输出
-        if let Some(default_output) = &self.config.default {
-            Ok(Message {
-                id: msg.id,
-                msg_type: default_output.clone(),
-                metadata: msg.metadata,
-                data: msg.data,
-                timestamp: msg.timestamp,
-            })
-        } else {
-            Err(RuleError::NodeExecutionError(
-                "No matching case".to_string(),
-            ))
-        }
+        // 如果没有匹配的 case，使用默认输出或原始消息类型
+        Ok(Message {
+            id: msg.id,
+            msg_type: self.config.default.clone().unwrap_or(msg.msg_type),
+            metadata: msg.metadata,
+            data: msg.data,
+            timestamp: msg.timestamp,
+        })
     }
 
     fn get_descriptor(&self) -> NodeDescriptor {

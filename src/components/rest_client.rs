@@ -104,16 +104,15 @@ impl RestClientNode {
 
 #[async_trait]
 impl NodeHandler for RestClientNode {
-    async fn handle(&self, _ctx: NodeContext, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(&self, _ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
         let response_data = self.make_request(&msg).await?;
-
         Ok(Message {
             id: msg.id,
             msg_type: self
                 .config
                 .output_type
                 .clone()
-                .unwrap_or_else(|| "http_response".to_string()),
+                .unwrap_or("http_response".to_string()),
             metadata: msg.metadata,
             data: response_data,
             timestamp: msg.timestamp,

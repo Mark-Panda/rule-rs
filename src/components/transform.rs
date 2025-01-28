@@ -79,12 +79,11 @@ impl TransformNode {
 
 #[async_trait]
 impl NodeHandler for TransformNode {
-    async fn handle(&self, _ctx: NodeContext, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(&self, _ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
         let new_data = self.apply_template(&msg)?;
-
         Ok(Message {
             id: msg.id,
-            msg_type: "alert".to_string(),
+            msg_type: msg.msg_type,
             metadata: msg.metadata,
             data: new_data,
             timestamp: msg.timestamp,
