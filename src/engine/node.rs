@@ -1,6 +1,7 @@
 use crate::types::{Message, NodeContext, NodeDescriptor, RuleError};
 use async_trait::async_trait;
 use std::collections::HashMap;
+use std::error::Error;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -10,8 +11,11 @@ pub trait NodeHandler: Send + Sync {
     fn get_descriptor(&self) -> NodeDescriptor;
 }
 
+pub type NodeFactory =
+    Arc<dyn Fn(serde_json::Value) -> Result<Arc<dyn NodeHandler>, Box<dyn Error>> + Send + Sync>;
+
 pub struct NodeRegistry {
-    handlers: RwLock<HashMap<String, Arc<dyn NodeHandler>>>,
+    handlers: RwLock<HashMap<String, NodeFactory>>,
 }
 
 impl NodeRegistry {
@@ -21,14 +25,22 @@ impl NodeRegistry {
         }
     }
 
-    pub async fn register(&self, type_name: &str, handler: Arc<dyn NodeHandler>) {
+    pub async fn register(&self, type_name: &str, factory: NodeFactory) {
         self.handlers
             .write()
             .await
-            .insert(type_name.to_string(), handler);
+            .insert(type_name.to_string(), factory);
     }
 
-    pub async fn get_handler(&self, type_name: &str) -> Option<Arc<dyn NodeHandler>> {
-        self.handlers.read().await.get(type_name).cloned()
+    pub async fn create_handler(
+        &self,
+        type_name: &str,
+        config: serde_json::Value,
+    ) -> Option<Arc<dyn NodeHandler>> {
+        if let Some(factory) = self.handlers.read().await.get(type_name) {
+            factory(config).ok()
+        } else {
+            None
+        }
     }
 }

@@ -9,7 +9,6 @@ pub use error::*;
 pub use message::*;
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use uuid::Uuid;
 
 // 规则链定义
@@ -53,4 +52,4 @@ pub struct Metadata {
     pub version: u64,
     pub created_at: i64,
     pub updated_at: i64,
-} 
+}

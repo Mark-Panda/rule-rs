@@ -1,10 +1,10 @@
 use crate::aop::{InterceptorManager, MessageInterceptor, NodeInterceptor};
 use crate::components::{
-    FilterConfig, FilterNode, RestClientConfig, RestClientNode, ScriptConfig, ScriptNode,
-    SubchainConfig, SubchainNode, SwitchConfig, SwitchNode, TransformConfig, TransformJsConfig,
+    FilterConfig, FilterNode, LogConfig, LogNode, RestClientConfig, RestClientNode, ScriptConfig,
+    ScriptNode, SubchainConfig, SwitchConfig, SwitchNode, TransformConfig, TransformJsConfig,
     TransformJsNode, TransformNode,
 };
-use crate::engine::{NodeRegistry, VersionManager};
+use crate::engine::{NodeFactory, NodeHandler, NodeRegistry, VersionManager};
 use crate::types::{ExecutionContext, Message, Node, NodeContext, RuleChain, RuleError};
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
@@ -24,6 +24,71 @@ pub struct RuleEngine {
 impl RuleEngine {
     pub fn new() -> Self {
         let node_registry = Arc::new(NodeRegistry::new());
+
+        // 注册内置组件
+        tokio::spawn({
+            let registry = node_registry.clone();
+            async move {
+                // 注册所有组件工厂
+                let factories: Vec<(&str, NodeFactory)> = vec![
+                    (
+                        "log",
+                        Arc::new(|config| {
+                            let config: LogConfig = serde_json::from_value(config)?;
+                            Ok(Arc::new(LogNode::new(config)) as Arc<dyn NodeHandler>)
+                        }),
+                    ),
+                    (
+                        "filter",
+                        Arc::new(|config| {
+                            let config: FilterConfig = serde_json::from_value(config)?;
+                            Ok(Arc::new(FilterNode::new(config)) as Arc<dyn NodeHandler>)
+                        }),
+                    ),
+                    (
+                        "transform",
+                        Arc::new(|config| {
+                            let config: TransformConfig = serde_json::from_value(config)?;
+                            Ok(Arc::new(TransformNode::new(config)) as Arc<dyn NodeHandler>)
+                        }),
+                    ),
+                    (
+                        "transform_js",
+                        Arc::new(|config| {
+                            let config: TransformJsConfig = serde_json::from_value(config)?;
+                            Ok(Arc::new(TransformJsNode::new(config)) as Arc<dyn NodeHandler>)
+                        }),
+                    ),
+                    (
+                        "script",
+                        Arc::new(|config| {
+                            let config: ScriptConfig = serde_json::from_value(config)?;
+                            Ok(Arc::new(ScriptNode::new(config)) as Arc<dyn NodeHandler>)
+                        }),
+                    ),
+                    (
+                        "switch",
+                        Arc::new(|config| {
+                            let config: SwitchConfig = serde_json::from_value(config)?;
+                            Ok(Arc::new(SwitchNode::new(config)) as Arc<dyn NodeHandler>)
+                        }),
+                    ),
+                    (
+                        "rest_client",
+                        Arc::new(|config| {
+                            let config: RestClientConfig = serde_json::from_value(config)?;
+                            Ok(Arc::new(RestClientNode::new(config)) as Arc<dyn NodeHandler>)
+                        }),
+                    ),
+                ];
+
+                // 注册所有工厂
+                for (type_name, factory) in factories {
+                    registry.register(type_name, factory).await;
+                }
+            }
+        });
+
         Self {
             chains: Arc::new(RwLock::new(HashMap::new())),
             node_registry,
@@ -160,60 +225,6 @@ impl RuleEngine {
         // 创建新版本
         let version = self.version_manager.create_version(&chain);
 
-        // 注册节点处理器
-        for node in &chain.nodes {
-            match node.type_name.as_str() {
-                "filter" => {
-                    let config: FilterConfig = serde_json::from_value(node.config.clone())
-                        .map_err(|e| RuleError::ConfigError(e.to_string()))?;
-                    let handler = Arc::new(FilterNode { config });
-                    self.node_registry.register(&node.type_name, handler).await;
-                }
-                "transform" => {
-                    let config: TransformConfig = serde_json::from_value(node.config.clone())
-                        .map_err(|e| RuleError::ConfigError(e.to_string()))?;
-                    let handler = Arc::new(TransformNode { config });
-                    self.node_registry.register(&node.type_name, handler).await;
-                }
-                "transform_js" => {
-                    let config: TransformJsConfig = serde_json::from_value(node.config.clone())
-                        .map_err(|e| RuleError::ConfigError(e.to_string()))?;
-                    let handler = Arc::new(TransformJsNode { config });
-                    self.node_registry.register(&node.type_name, handler).await;
-                }
-                "script" => {
-                    let config: ScriptConfig = serde_json::from_value(node.config.clone())
-                        .map_err(|e| RuleError::ConfigError(e.to_string()))?;
-                    let handler = Arc::new(ScriptNode { config });
-                    self.node_registry.register(&node.type_name, handler).await;
-                }
-                "switch" => {
-                    let config: SwitchConfig = serde_json::from_value(node.config.clone())
-                        .map_err(|e| RuleError::ConfigError(e.to_string()))?;
-                    let handler = Arc::new(SwitchNode { config });
-                    self.node_registry.register(&node.type_name, handler).await;
-                }
-                "rest_client" => {
-                    let config: RestClientConfig = serde_json::from_value(node.config.clone())
-                        .map_err(|e| RuleError::ConfigError(e.to_string()))?;
-                    let handler = Arc::new(RestClientNode::new(config));
-                    self.node_registry.register(&node.type_name, handler).await;
-                }
-                "subchain" => {
-                    let config: SubchainConfig = serde_json::from_value(node.config.clone())
-                        .map_err(|e| RuleError::ConfigError(e.to_string()))?;
-                    let handler = Arc::new(SubchainNode::new(config, Arc::new(self.clone())));
-                    self.node_registry.register(&node.type_name, handler).await;
-                }
-                _ => {
-                    return Err(RuleError::ConfigError(format!(
-                        "Unknown node type: {}",
-                        node.type_name
-                    )))
-                }
-            }
-        }
-
         // 更新规则链元数据
         let mut chain = chain;
         chain.metadata.version = version.version;
@@ -303,7 +314,7 @@ impl RuleEngine {
         // 获取节点处理器
         let handler = self
             .node_registry
-            .get_handler(&node.type_name)
+            .create_handler(&node.type_name, node.config.clone())
             .await
             .ok_or_else(|| RuleError::HandlerNotFound(node.type_name.clone()))?;
 

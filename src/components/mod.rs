@@ -1,4 +1,5 @@
 mod filter;
+mod log;
 mod rest_client;
 mod script;
 mod subchain;
@@ -7,6 +8,7 @@ mod transform;
 mod transform_js;
 
 pub use filter::{FilterConfig, FilterNode};
+pub use log::*;
 pub use rest_client::{RestClientConfig, RestClientNode};
 pub use script::{ScriptConfig, ScriptNode};
 pub use subchain::{SubchainConfig, SubchainNode};
