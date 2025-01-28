@@ -1,0 +1,189 @@
+# RuleGo 规则引擎 Rust 实现架构设计
+
+## 目录
+1. [核心模块划分](#一核心模块划分)  
+2. [规则链配置结构](#二规则链配置结构)  
+3. [节点库](#三节点库)  
+4. [消息处理流程](#四消息处理流程)  
+5. [持久化与存储](#五持久化与存储)  
+6. [监控与调试](#六监控与调试)  
+7. [关键功能实现](#七关键功能实现)  
+8. [Rust 实现注意事项](#八rust-实现注意事项)  
+9. [测试用例示例](#测试用例示例)  
+
+---
+
+<a id="一核心模块划分"></a>
+## 一、核心模块划分
+
+### 1. 规则引擎核心 (Rule Engine Core)
+| 子模块            | 功能描述                                                                 |
+|--------------------|--------------------------------------------------------------------------|
+| 规则链管理         | JSON解析/加载、结构验证、坐标处理、版本控制                              |
+| 节点管理           | 节点注册系统、配置参数验证、执行上下文管理                               |
+| 执行引擎           | 异步/同步流水线、节点跳转逻辑、错误处理                                  |
+
+---
+
+<a id="二规则链配置结构"></a>
+## 二、规则链配置结构
+
+```rust
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RuleChain {
+    id: Uuid,
+    name: String,
+    root: bool,
+    nodes: Vec<Node>,
+    connections: Vec<Connection>,
+    metadata: Metadata,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Node {
+    id: Uuid,
+    type: String,
+    layout: Position  // 图形化坐标
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Position {
+    x: f32,
+    y: f32
+}
+```
+
+<a id="三节点库"></a>
+
+## 1. 节点架构设计
+```rust
+pub struct NodeRegistry {
+    handlers: RwLock<HashMap<String, Arc<dyn NodeHandler>>>,
+    builtin_types: Vec<&'static str>
+}
+
+impl NodeRegistry {
+    /// 注册新节点类型
+    pub fn register(&self, type_name: &str, handler: Arc<dyn NodeHandler>) {
+        self.handlers.write().insert(type_name.to_string(), handler);
+    }
+}
+```
+
+## 2. 节点配置验证
+
+```rust
+struct NodeConfigValidator {
+    schema_store: SchemaStore
+}
+
+impl NodeConfigValidator {
+    fn validate(&self, node_type: &str, config: &Value) -> Result<(), Vec<ValidationError>> {
+        let schema = self.schema_store.get(node_type);
+        jsonschema::JSONSchema::compile(schema)
+            .unwrap()
+            .validate(config)
+    }
+}
+```
+
+<a id="四消息处理流程实现"></a>
+
+## 1. 消息生命周期管理
+
+```rust
+enum MsgLifecycle {
+    Processing,     // 正在处理
+    Completed,      // 处理完成
+    DeadLetter,     // 死信队列
+    Retrying(u8)    // 重试次数
+}
+
+struct MessageTracker {
+    msg_id: Uuid,
+    status: AtomicU8,
+    retry_count: AtomicU8
+}
+```
+
+## 2. 上下文传递机制
+
+```rust
+struct ContextPassing {
+    thread_local_ctx: ThreadLocal<ContextData>,  // 线程局部存储
+    async_task_ctx: TaskLocal<ContextData>       // 异步任务上下文
+}
+```
+
+<a id="五持久化存储实现"></a>
+
+## 1. PostgreSQL存储实现
+
+```sql
+CREATE TABLE rule_chains (
+    id UUID PRIMARY KEY,
+    data JSONB NOT NULL,
+    version BIGINT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_chain_version ON rule_chains USING BTREE (version);
+```
+
+## 2. 版本控制实现
+
+```rust
+struct VersionManager {
+    current_version: AtomicU64,
+    history: Vec<ChainVersion>
+}
+
+struct ChainVersion {
+    version: u64,
+    hash: [u8; 32],  // blake3 hash
+    timestamp: i64
+}
+```
+<a id="六监控系统实现"></a>
+
+## 1. Prometheus指标集成
+
+## 2. 日志追踪实现
+
+<a id="七关键功能实现细节"></a>
+
+## 1. 规则链热加载
+```rust
+struct HotReloader {
+    watcher: RecommendedWatcher,
+    reload_rx: mpsc::Receiver<ReloadEvent>
+}
+
+impl HotReloader {
+    fn watch(dir: &Path) -> Result<Self> {
+        let (tx, rx) = mpsc::channel();
+        let mut watcher = RecommendedWatcher::new(
+            move |res| tx.send(res.unwrap()),
+            Config::default()
+        )?;
+        watcher.watch(dir, RecursiveMode::Recursive)?;
+        Ok(Self { watcher, reload_rx: rx })
+    }
+}
+```
+
+<a id="八Rust实现安全规范"></a>
+
+## 1. WASM沙箱安全策略
+```rust
+fn create_wasm_store() -> wasmtime::Store {
+    let mut config = wasmtime::Config::new();
+    config
+        .static_memory_maximum_size(4 * 1024 * 1024) // 4MB内存限制
+        .max_wasm_stack(512 * 1024)                 // 512KB栈限制
+        .wasm_threads(false)                        // 禁用线程
+        .wasm_bulk_memory(false);                   // 禁用批量内存操作
+
+    Store::new(&Engine::new(&config).unwrap())
+}
+```

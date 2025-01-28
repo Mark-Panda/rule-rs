@@ -1,0 +1,65 @@
+[package]
+name = "rulego-rs"
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "A rule engine implementation in Rust"
+license = "MIT"
+
+[dependencies]
+# 序列化/反序列化
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# 异步运行时
+tokio = { version = "1.0", features = ["full"] }
+
+# 通用工具
+uuid = { version = "1.0", features = ["serde", "v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+async-trait = "0.1"
+
+# 错误处理
+thiserror = "2.0.11"
+anyhow = "1.0"
+
+# 日志
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# JSON Schema 验证
+jsonschema = "0.28.3"
+
+# WASM 支持 (可选)
+wasmtime = { version = "29.0.1", optional = true }
+
+# 监控指标 (可选)
+prometheus = { version = "0.13", features = ["process"], optional = true }
+
+# Blake3
+blake3 = "1.5"
+
+# QuickJS
+rquickjs = { version = "0.4", features = ["bindgen", "parallel"] }
+
+# HTTP 客户端
+reqwest = { version = "0.11", features = ["json"] }
+
+# HTTP 服务器
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["trace"] }
+
+[dev-dependencies]
+tokio-test = "0.4"
+pretty_assertions = "1.0"
+test-log = "0.2"
+
+[[example]]
+name = "simple_rule"
+path = "examples/simple_rule.rs"
+
+[features]
+default = ["metrics", "wasm"]
+metrics = ["dep:prometheus"]
+wasm = ["dep:wasmtime"]

@@ -1,0 +1,11 @@
+[log]
+level = "debug"
+
+[log.file]
+path = "logs/rulego.log"
+rotation = "daily"
+retention = "7 days"
+
+[log.console]
+enabled = true
+format = "full"
