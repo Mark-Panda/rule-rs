@@ -2,7 +2,7 @@ use crate::aop::{InterceptorManager, MessageInterceptor, NodeInterceptor};
 use crate::components::{
     FilterConfig, FilterNode, LogConfig, LogNode, RestClientConfig, RestClientNode, ScriptConfig,
     ScriptNode, SubchainConfig, SwitchConfig, SwitchNode, TransformConfig, TransformJsConfig,
-    TransformJsNode, TransformNode,
+    TransformJsNode, TransformNode, WeatherConfig, WeatherNode,
 };
 use crate::engine::{NodeFactory, NodeHandler, NodeRegistry, VersionManager};
 use crate::types::{ExecutionContext, Message, Node, NodeContext, RuleChain, RuleError};
@@ -78,6 +78,13 @@ impl RuleEngine {
                         Arc::new(|config| {
                             let config: RestClientConfig = serde_json::from_value(config)?;
                             Ok(Arc::new(RestClientNode::new(config)) as Arc<dyn NodeHandler>)
+                        }),
+                    ),
+                    (
+                        "weather",
+                        Arc::new(|config| {
+                            let config: WeatherConfig = serde_json::from_value(config)?;
+                            Ok(Arc::new(WeatherNode::new(config)) as Arc<dyn NodeHandler>)
                         }),
                     ),
                 ];
