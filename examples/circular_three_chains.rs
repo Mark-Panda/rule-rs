@@ -4,33 +4,33 @@ use tracing::{error, info, Level};
 
 // 规则链 A
 const CHAIN_A: &str = r#"{
-    "id": "chain-a",
-    "name": "Chain A",
+    "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
+    "name": "规则链 A",
     "root": true,
     "nodes": [
         {
-            "id": "node-a1",
-            "type_name": "log",
-            "chain_id": "chain-a",
+            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
+            "type_name": "script",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
-                "template": "Chain A -> Chain B"
+                "script": "return msg;"
             },
             "layout": { "x": 100, "y": 100 }
         },
         {
-            "id": "node-a2",
+            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
             "type_name": "subchain",
-            "chain_id": "chain-a",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
-                "chain_id": "chain-b"
+                "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304"
             },
             "layout": { "x": 300, "y": 100 }
         }
     ],
     "connections": [
         {
-            "from_id": "node-a1",
-            "to_id": "node-a2",
+            "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
+            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
             "type_name": "success"
         }
     ],
@@ -43,33 +43,33 @@ const CHAIN_A: &str = r#"{
 
 // 规则链 B
 const CHAIN_B: &str = r#"{
-    "id": "chain-b",
-    "name": "Chain B",
+    "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304",
+    "name": "规则链 B",
     "root": false,
     "nodes": [
         {
-            "id": "node-b1",
-            "type_name": "log",
-            "chain_id": "chain-b",
+            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3305",
+            "type_name": "script",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304",
             "config": {
-                "template": "Chain B -> Chain C"
+                "script": "return msg;"
             },
             "layout": { "x": 100, "y": 100 }
         },
         {
-            "id": "node-b2",
+            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3306",
             "type_name": "subchain",
-            "chain_id": "chain-b",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304",
             "config": {
-                "chain_id": "chain-c"
+                "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3307"
             },
             "layout": { "x": 300, "y": 100 }
         }
     ],
     "connections": [
         {
-            "from_id": "node-b1",
-            "to_id": "node-b2",
+            "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3305",
+            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3306",
             "type_name": "success"
         }
     ],
@@ -82,33 +82,33 @@ const CHAIN_B: &str = r#"{
 
 // 规则链 C
 const CHAIN_C: &str = r#"{
-    "id": "chain-c",
-    "name": "Chain C",
+    "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3307",
+    "name": "规则链 C",
     "root": false,
     "nodes": [
         {
-            "id": "node-c1",
-            "type_name": "log",
-            "chain_id": "chain-c",
+            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3308",
+            "type_name": "script",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3307",
             "config": {
-                "template": "Chain C -> Chain A"
+                "script": "return msg;"
             },
             "layout": { "x": 100, "y": 100 }
         },
         {
-            "id": "node-c2",
+            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3309",
             "type_name": "subchain",
-            "chain_id": "chain-c",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3307",
             "config": {
-                "chain_id": "chain-a"
+                "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301"
             },
             "layout": { "x": 300, "y": 100 }
         }
     ],
     "connections": [
         {
-            "from_id": "node-c1",
-            "to_id": "node-c2",
+            "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3308",
+            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3309",
             "type_name": "success"
         }
     ],

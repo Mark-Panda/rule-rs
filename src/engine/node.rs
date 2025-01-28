@@ -41,23 +41,40 @@ impl NodeFactoryWrapper {
 pub type NodeFactory =
     Arc<dyn Fn(serde_json::Value) -> Result<Arc<dyn NodeHandler>, Box<dyn Error>> + Send + Sync>;
 
-#[derive(Debug)]
 pub struct NodeRegistry {
-    handlers: RwLock<HashMap<String, Arc<NodeFactoryWrapper>>>,
+    factories: RwLock<HashMap<String, NodeFactory>>,
+    descriptors: RwLock<HashMap<String, NodeDescriptor>>,
 }
 
 impl NodeRegistry {
     pub fn new() -> Self {
         Self {
-            handlers: RwLock::new(HashMap::new()),
+            factories: RwLock::new(HashMap::new()),
+            descriptors: RwLock::new(HashMap::new()),
         }
     }
 
     pub async fn register(&self, type_name: &str, factory: NodeFactory) {
-        self.handlers.write().await.insert(
-            type_name.to_string(),
-            Arc::new(NodeFactoryWrapper::new(factory)),
-        );
+        let mut factories = self.factories.write().await;
+        let mut descriptors = self.descriptors.write().await;
+
+        // 创建一个临时配置来获取节点描述符
+        let empty_config = serde_json::json!({});
+        match factory(empty_config.clone()) {
+            Ok(node) => {
+                let descriptor = node.get_descriptor();
+                descriptors.insert(type_name.to_string(), descriptor);
+                factories.insert(type_name.to_string(), factory);
+            }
+            Err(e) => {
+                tracing::error!("Failed to register node type {}: {}", type_name, e);
+            }
+        }
+    }
+
+    pub async fn get_descriptors(&self) -> Vec<NodeDescriptor> {
+        let descriptors = self.descriptors.read().await;
+        descriptors.values().cloned().collect()
     }
 
     pub async fn create_handler(
@@ -65,26 +82,19 @@ impl NodeRegistry {
         type_name: &str,
         config: serde_json::Value,
     ) -> Option<Arc<dyn NodeHandler>> {
-        if let Some(wrapper) = self.handlers.read().await.get(type_name) {
-            wrapper.create(config).ok()
+        if let Some(factory) = self.factories.read().await.get(type_name) {
+            factory(config).ok()
         } else {
             None
         }
     }
+}
 
-    /// 获取所有已注册组件的描述信息
-    pub async fn get_descriptors(&self) -> Vec<NodeDescriptor> {
-        let mut descriptors = Vec::new();
-
-        // 创建一个空配置来初始化每种类型的节点
-        let empty_config = serde_json::json!({});
-
-        for (_type_name, wrapper) in self.handlers.read().await.iter() {
-            if let Ok(handler) = wrapper.create(empty_config.clone()) {
-                descriptors.push(handler.get_descriptor());
-            }
-        }
-
-        descriptors
+impl fmt::Debug for NodeRegistry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("NodeRegistry")
+            .field("factories", &"<node factories>")
+            .field("descriptors", &"<node descriptors>")
+            .finish()
     }
 }

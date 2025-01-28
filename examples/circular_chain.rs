@@ -11,6 +11,7 @@ const CIRCULAR_CHAIN: &str = r#"{
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
             "type_name": "transform",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
                 "template": {
                     "value": "${msg.data.value}"
@@ -21,6 +22,7 @@ const CIRCULAR_CHAIN: &str = r#"{
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303", 
             "type_name": "script",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
                 "script": "return { value: msg.data.value + 1 };"
             },
@@ -29,6 +31,7 @@ const CIRCULAR_CHAIN: &str = r#"{
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304",
             "type_name": "filter",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
                 "condition": "value < 10",
                 "js_script": null

@@ -21,6 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             {
                 "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
                 "type_name": "weather",
+                "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
                 "config": {
                     "api_key": "5b90fd27b0eb4fcf86132317252801",
                     "city": "Shanghai",
@@ -31,6 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             {
                 "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
                 "type_name": "log",
+                "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
                 "config": {
                     "template": "天气信息 - 城市: ${msg.城市}, 温度: ${msg.温度}, 天气: ${msg.天气}, 湿度: ${msg.湿度}, 更新时间: ${msg.更新时间}"
                 },

@@ -69,6 +69,7 @@ const RULE_CHAIN: &str = r#"{
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
             "type_name": "rest_client",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
                 "url": "https://api.weatherapi.com/v1/current.json?key=5b90fd27b0eb4fcf86132317252801&q=${q}&aqi=${aqi}",
                 "method": "GET",
@@ -81,6 +82,7 @@ const RULE_CHAIN: &str = r#"{
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
             "type_name": "script",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
                 "script": "try { const resp = msg.data; if (!resp || !resp.body) { throw new Error('Invalid response data'); } const location = resp.body.location || {}; const current = resp.body.current || {}; const condition = current.condition || {}; return { location: location.name || 'Unknown', temperature: current.temp_c || 0, condition: condition.text || 'Unknown', humidity: current.humidity || 0, updated_at: current.last_updated || new Date().toISOString() }; } catch (err) { console.error('Error processing weather data:', err); return { location: 'Error', temperature: 0, condition: 'Error: ' + err.message, humidity: 0, updated_at: new Date().toISOString() }; }",
                 "output_type": "weather_info"
@@ -90,6 +92,7 @@ const RULE_CHAIN: &str = r#"{
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304",
             "type_name": "transform",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
                 "template": {
                     "城市": "${msg.location}",

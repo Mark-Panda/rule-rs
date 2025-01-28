@@ -54,7 +54,7 @@ impl NodeHandler for LogNode {
         NodeDescriptor {
             type_name: "log".to_string(),
             name: "日志节点".to_string(),
-            description: "输出格式化日志".to_string(),
+            description: "输出日志消息".to_string(),
         }
     }
 }

@@ -11,6 +11,7 @@ const SUB_CHAIN: &str = r#"{
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3402",
             "type_name": "script",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3401",
             "config": {
                 "script": "return { value: msg.data.value + 1 };"
             },
@@ -19,6 +20,7 @@ const SUB_CHAIN: &str = r#"{
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3403",
             "type_name": "subchain",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3401",
             "config": {
                 "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
                 "output_type": "test"
@@ -49,6 +51,7 @@ const MAIN_CHAIN: &str = r#"{
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
             "type_name": "filter",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
                 "condition": "value < 10",
                 "js_script": null
@@ -58,6 +61,7 @@ const MAIN_CHAIN: &str = r#"{
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
             "type_name": "subchain",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
                 "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3401",
                 "output_type": "test"

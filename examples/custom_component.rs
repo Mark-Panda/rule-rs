@@ -21,6 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             {
                 "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
                 "type_name": "script",
+                "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
                 "config": {
                     "script": "return { value: msg.data.value + 1, name: 'test' };"
                 },
@@ -29,6 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             {
                 "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
                 "type_name": "log",
+                "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
                 "config": {
                     "template": "处理结果 - ID: ${msg.id}, 类型: ${msg.type}, 值: ${msg.value}, 名称: ${msg.name}"
                 },

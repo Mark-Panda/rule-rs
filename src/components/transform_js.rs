@@ -38,12 +38,10 @@ impl TransformJsNode {
                 "#,
                 msg_data, self.config.script
             );
-            println!("js code: {}", js_code);
             // 执行转换脚本
             let result: String = ctx
                 .eval(js_code)
                 .map_err(|e| RuleError::NodeExecutionError(e.to_string()))?;
-            println!("js result: {}", result);
             // 解析结果
             serde_json::from_str(&result).map_err(|e| RuleError::NodeExecutionError(e.to_string()))
         })

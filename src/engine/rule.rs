@@ -14,6 +14,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use tracing::info;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -34,72 +35,147 @@ impl RuleEngine {
             (
                 "log",
                 Arc::new(|config| {
-                    let config: LogConfig = serde_json::from_value(config)?;
-                    Ok(Arc::new(LogNode::new(config)) as Arc<dyn NodeHandler>)
+                    if config.is_object() && config.as_object().unwrap().is_empty() {
+                        // 用于获取描述符时使用默认配置
+                        Ok(Arc::new(LogNode::new(LogConfig {
+                            template: "".to_string(),
+                        })) as Arc<dyn NodeHandler>)
+                    } else {
+                        let config: LogConfig = serde_json::from_value(config)?;
+                        Ok(Arc::new(LogNode::new(config)) as Arc<dyn NodeHandler>)
+                    }
                 }),
             ),
             (
                 "delay",
                 Arc::new(|config| {
-                    let config: DelayConfig = serde_json::from_value(config)?;
-                    let node = DelayNode::new(config)?;
-                    Ok(Arc::new(node) as Arc<dyn NodeHandler>)
+                    if config.is_object() && config.as_object().unwrap().is_empty() {
+                        let node = DelayNode::new(DelayConfig {
+                            delay_ms: 0,
+                            periodic: false,
+                            period_count: 0,
+                            cron: None,
+                            timezone_offset: 0,
+                        })?;
+                        Ok(Arc::new(node) as Arc<dyn NodeHandler>)
+                    } else {
+                        let config: DelayConfig = serde_json::from_value(config)?;
+                        let node = DelayNode::new(config)?;
+                        Ok(Arc::new(node) as Arc<dyn NodeHandler>)
+                    }
                 }),
             ),
             (
                 "filter",
                 Arc::new(|config| {
-                    let config: FilterConfig = serde_json::from_value(config)?;
-                    Ok(Arc::new(FilterNode::new(config)) as Arc<dyn NodeHandler>)
+                    if config.is_object() && config.as_object().unwrap().is_empty() {
+                        Ok(Arc::new(FilterNode::new(FilterConfig {
+                            condition: "true".to_string(),
+                            js_script: None,
+                        })) as Arc<dyn NodeHandler>)
+                    } else {
+                        let config: FilterConfig = serde_json::from_value(config)?;
+                        Ok(Arc::new(FilterNode::new(config)) as Arc<dyn NodeHandler>)
+                    }
                 }),
             ),
             (
                 "transform",
                 Arc::new(|config| {
-                    let config: TransformConfig = serde_json::from_value(config)?;
-                    Ok(Arc::new(TransformNode::new(config)) as Arc<dyn NodeHandler>)
+                    if config.is_object() && config.as_object().unwrap().is_empty() {
+                        Ok(Arc::new(TransformNode::new(TransformConfig {
+                            template: serde_json::json!({}), // 使用 json! 宏创建空对象
+                        })) as Arc<dyn NodeHandler>)
+                    } else {
+                        let config: TransformConfig = serde_json::from_value(config)?;
+                        Ok(Arc::new(TransformNode::new(config)) as Arc<dyn NodeHandler>)
+                    }
                 }),
             ),
             (
                 "transform_js",
                 Arc::new(|config| {
-                    let config: TransformJsConfig = serde_json::from_value(config)?;
-                    Ok(Arc::new(TransformJsNode::new(config)) as Arc<dyn NodeHandler>)
+                    if config.is_object() && config.as_object().unwrap().is_empty() {
+                        Ok(Arc::new(TransformJsNode::new(TransformJsConfig {
+                            script: "return msg;".to_string(),
+                        })) as Arc<dyn NodeHandler>)
+                    } else {
+                        let config: TransformJsConfig = serde_json::from_value(config)?;
+                        Ok(Arc::new(TransformJsNode::new(config)) as Arc<dyn NodeHandler>)
+                    }
                 }),
             ),
             (
                 "script",
                 Arc::new(|config| {
-                    let config: ScriptConfig = serde_json::from_value(config)?;
-                    Ok(Arc::new(ScriptNode::new(config)) as Arc<dyn NodeHandler>)
+                    if config.is_object() && config.as_object().unwrap().is_empty() {
+                        Ok(Arc::new(ScriptNode::new(ScriptConfig {
+                            script: "return msg;".to_string(),
+                            output_type: None,
+                        })) as Arc<dyn NodeHandler>)
+                    } else {
+                        let config: ScriptConfig = serde_json::from_value(config)?;
+                        Ok(Arc::new(ScriptNode::new(config)) as Arc<dyn NodeHandler>)
+                    }
                 }),
             ),
             (
                 "switch",
                 Arc::new(|config| {
-                    let config: SwitchConfig = serde_json::from_value(config)?;
-                    Ok(Arc::new(SwitchNode::new(config)) as Arc<dyn NodeHandler>)
+                    if config.is_object() && config.as_object().unwrap().is_empty() {
+                        Ok(Arc::new(SwitchNode::new(SwitchConfig {
+                            cases: Vec::new(),
+                            default: None,
+                        })) as Arc<dyn NodeHandler>)
+                    } else {
+                        let config: SwitchConfig = serde_json::from_value(config)?;
+                        Ok(Arc::new(SwitchNode::new(config)) as Arc<dyn NodeHandler>)
+                    }
                 }),
             ),
             (
                 "rest_client",
                 Arc::new(|config| {
-                    let config: RestClientConfig = serde_json::from_value(config)?;
-                    Ok(Arc::new(RestClientNode::new(config)) as Arc<dyn NodeHandler>)
+                    if config.is_object() && config.as_object().unwrap().is_empty() {
+                        Ok(Arc::new(RestClientNode::new(RestClientConfig {
+                            url: "http://localhost".to_string(),
+                            method: "GET".to_string(),
+                            headers: None,
+                            timeout_ms: None,
+                            output_type: None,
+                        })) as Arc<dyn NodeHandler>)
+                    } else {
+                        let config: RestClientConfig = serde_json::from_value(config)?;
+                        Ok(Arc::new(RestClientNode::new(config)) as Arc<dyn NodeHandler>)
+                    }
                 }),
             ),
             (
                 "weather",
                 Arc::new(|config| {
-                    let config: WeatherConfig = serde_json::from_value(config)?;
-                    Ok(Arc::new(WeatherNode::new(config)) as Arc<dyn NodeHandler>)
+                    if config.is_object() && config.as_object().unwrap().is_empty() {
+                        Ok(Arc::new(WeatherNode::new(WeatherConfig {
+                            api_key: "demo".to_string(),
+                            city: "".to_string(),
+                            language: "zh".to_string(),
+                        })) as Arc<dyn NodeHandler>)
+                    } else {
+                        let config: WeatherConfig = serde_json::from_value(config)?;
+                        Ok(Arc::new(WeatherNode::new(config)) as Arc<dyn NodeHandler>)
+                    }
                 }),
             ),
             (
                 "subchain",
                 Arc::new(|config| {
-                    let config: SubchainConfig = serde_json::from_value(config)?;
-                    Ok(Arc::new(SubchainNode::new(config)) as Arc<dyn NodeHandler>)
+                    if config.is_object() && config.as_object().unwrap().is_empty() {
+                        Ok(Arc::new(SubchainNode::new(SubchainConfig {
+                            chain_id: Uuid::nil(),
+                        })) as Arc<dyn NodeHandler>)
+                    } else {
+                        let config: SubchainConfig = serde_json::from_value(config)?;
+                        Ok(Arc::new(SubchainNode::new(config)) as Arc<dyn NodeHandler>)
+                    }
                 }),
             ),
         ];
@@ -347,10 +423,12 @@ impl RuleEngine {
         // 执行节点
         let result = match handler.handle(ctx.clone(), msg.clone()).await {
             Ok(result) => {
+                // 节点执行后拦截
                 manager.after_node(ctx, &result).await?;
                 Ok(result)
             }
             Err(e) => {
+                // 节点错误拦截
                 manager.node_error(ctx, &e).await?;
                 Err(e)
             }
