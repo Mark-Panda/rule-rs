@@ -20,11 +20,9 @@ impl LogNode {
 
     fn format_message(&self, msg: &Message) -> String {
         let mut result = self.config.template.clone();
-
         // 替换消息相关的变量
         result = result.replace("${msg.id}", &msg.id.to_string());
         result = result.replace("${msg.type}", &msg.msg_type);
-
         // 替换数据中的变量
         if let Some(obj) = msg.data.as_object() {
             for (key, value) in obj {
@@ -33,8 +31,13 @@ impl LogNode {
                     result = result.replace(&placeholder, &value.to_string());
                 }
             }
+        } else if let Some(value) = msg.data.as_str() {
+            result = result.replace("${msg.data}", value);
+        } else if let Some(value) = msg.data.as_f64() {
+            result = result.replace("${msg.data}", &value.to_string());
+        } else {
+            result = result.replace("${msg.data}", &msg.data.to_string());
         }
-
         result
     }
 }
@@ -44,8 +47,7 @@ impl NodeHandler for LogNode {
     async fn handle<'a>(&self, _ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
         // 格式化并输出日志
         let log_message = self.format_message(&msg);
-        info!("{}", log_message);
-
+        info!("log组件输出: {}", log_message);
         // 返回原始消息
         Ok(msg)
     }

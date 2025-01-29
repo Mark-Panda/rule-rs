@@ -185,6 +185,8 @@ impl RuleEngine {
                         Ok(Arc::new(JsFunctionNode::new(JsFunctionConfig {
                             functions: HashMap::new(),
                             main: "main".to_string(),
+                            chain_id: String::new(),
+                            node_id: String::new(),
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: JsFunctionConfig = serde_json::from_value(config)?;

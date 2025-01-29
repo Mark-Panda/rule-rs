@@ -5,38 +5,57 @@ use rquickjs::{Context, Runtime};
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::RwLock;
+use tokio::sync::Mutex;
 
 #[derive(Debug, Deserialize)]
 pub struct JsFunctionConfig {
     pub functions: HashMap<String, String>, // 函数名 -> 函数定义
     pub main: String,                       // 主函数名
+    #[serde(default)]
+    pub chain_id: String,
+    #[serde(default)]
+    pub node_id: String,
+}
+
+impl Default for JsFunctionConfig {
+    fn default() -> Self {
+        Self {
+            functions: HashMap::new(),
+            main: "main".to_string(),
+            chain_id: String::new(),
+            node_id: String::new(),
+        }
+    }
 }
 
 pub struct JsFunctionNode {
-    config: JsFunctionConfig,
-    runtime: Runtime,
+    config: RwLock<JsFunctionConfig>,
+    runtime: Arc<Mutex<Runtime>>,
 }
 
 impl JsFunctionNode {
     pub fn new(config: JsFunctionConfig) -> Self {
         Self {
-            config,
-            runtime: Runtime::new().unwrap(),
+            config: RwLock::new(config),
+            runtime: Arc::new(Mutex::new(Runtime::new().unwrap())),
         }
     }
 
     fn register_functions<'js>(&self, ctx: &rquickjs::Ctx<'js>) -> Result<(), RuleError> {
         // 注册所有函数
-        for (name, code) in &self.config.functions {
+        let config = self.config.read().unwrap();
+        for (name, code) in &config.functions {
+            let func_name = format!("{}_{}_{}", name, config.chain_id, config.node_id);
             let js_code = format!(
                 r#"
                 function {}(msg) {{
                     {}
                 }}
                 "#,
-                name, code
+                func_name, code
             );
-            println!("js_code {}", js_code);
             ctx.eval::<(), _>(js_code)
                 .map_err(|e| RuleError::NodeExecutionError(format!("函数注册失败: {}", e)))?;
         }
@@ -48,15 +67,16 @@ impl JsFunctionNode {
         self.register_functions(ctx)?;
 
         // 注入消息对象
+        let config = self.config.read().unwrap();
+        let main_name = format!("{}_{}_{}", config.main, config.chain_id, config.node_id);
         let msg_json = serde_json::to_string(&msg).unwrap();
         ctx.eval::<(), _>(format!("const msg = {};", msg_json))
             .map_err(|e| RuleError::NodeExecutionError(e.to_string()))?;
 
         // 调用主函数并获取结果
         let result = ctx
-            .eval::<String, _>(format!("JSON.stringify({}(msg));", self.config.main))
+            .eval::<String, _>(format!("JSON.stringify({}(msg));", main_name))
             .map_err(|e| RuleError::NodeExecutionError(format!("函数执行失败: {}", e)))?;
-
         // 解析JSON结果
         serde_json::from_str(&result)
             .map_err(|e| RuleError::NodeExecutionError(format!("结果解析失败: {}", e)))
@@ -65,11 +85,27 @@ impl JsFunctionNode {
 
 #[async_trait]
 impl NodeHandler for JsFunctionNode {
-    async fn handle<'a>(&self, _ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
-        let ctx = Context::full(&self.runtime).unwrap();
+    async fn handle<'a>(
+        &self,
+        node_ctx: NodeContext<'a>,
+        msg: Message,
+    ) -> Result<Message, RuleError> {
+        // 获取当前节点和规则链信息
+        let node = node_ctx.node;
+        let chain_id = node.chain_id.to_string().replace("-", "_");
+        let node_id = node.id.to_string().replace("-", "_");
 
+        // 更新配置并立即释放锁
+        {
+            let mut config = self.config.write().unwrap();
+            config.chain_id = chain_id;
+            config.node_id = node_id;
+        } // 锁在这里被释放
+
+        // 获取运行时的互斥锁
+        let runtime = self.runtime.lock().await;
+        let ctx = Context::full(&runtime).unwrap();
         let result = ctx.with(|ctx| self.execute_js(&ctx, &msg))?;
-
         // 构造返回消息
         Ok(Message {
             id: msg.id,
