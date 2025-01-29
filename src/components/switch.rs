@@ -1,22 +1,25 @@
 use crate::engine::NodeHandler;
 use crate::types::{Message, NodeContext, NodeDescriptor, RuleError};
 use async_trait::async_trait;
-use serde::Deserialize;
+use rquickjs::{Context, Runtime};
+use serde::{Deserialize, Serialize};
 
-pub struct SwitchNode {
-    pub(crate) config: SwitchConfig,
-}
-
-#[derive(Deserialize)]
+// 分支条件配置
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SwitchCase {
-    pub condition: String,
-    pub output: String,
+    pub name: String,        // 分支名称
+    pub condition: String,   // JS条件表达式
+    pub description: String, // 分支描述
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct SwitchConfig {
     pub cases: Vec<SwitchCase>,
-    pub default: Option<String>,
+    pub default_next: Option<String>, // 默认分支名称
+}
+
+pub struct SwitchNode {
+    config: SwitchConfig,
 }
 
 impl SwitchNode {
@@ -24,57 +27,64 @@ impl SwitchNode {
         Self { config }
     }
 
-    fn evaluate_case(&self, case: &SwitchCase, msg: &Message) -> Result<bool, RuleError> {
-        // 简单实现，实际应该使用表达式引擎
-        match case.condition.as_str() {
-            "true" => Ok(true),
-            "false" => Ok(false),
-            _ => {
-                if let Some(value) = msg.data.get("value") {
-                    if let Some(num) = value.as_f64() {
-                        let expr = case.condition.replace("value", &num.to_string());
-                        // 这里应该使用表达式引擎进行求值
-                        Ok(expr.contains(">") || expr.contains("<"))
-                    } else {
-                        Ok(false)
-                    }
-                } else {
-                    Ok(false)
-                }
-            }
-        }
+    // 执行条件表达式
+    fn evaluate_condition(&self, case: &SwitchCase, msg: &Message) -> Result<bool, RuleError> {
+        let rt = Runtime::new().unwrap();
+        let ctx = Context::full(&rt).unwrap();
+
+        ctx.with(|ctx| {
+            // 注入消息数据
+            let msg_json = serde_json::to_string(&msg).unwrap();
+            let js_code = format!(
+                r#"
+                const msg = {};
+                const condition = () => {{ 
+                    return {}; 
+                }};
+                condition();
+                "#,
+                msg_json, case.condition
+            );
+
+            // 执行条件表达式
+            let result: bool = ctx
+                .eval(js_code)
+                .map_err(|e: rquickjs::Error| RuleError::NodeExecutionError(e.to_string()))?;
+
+            Ok(result)
+        })
     }
 }
 
 #[async_trait]
 impl NodeHandler for SwitchNode {
     async fn handle<'a>(&self, _ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+        // 遍历所有分支条件
         for case in &self.config.cases {
-            if self.evaluate_case(case, &msg)? {
-                return Ok(Message {
-                    id: msg.id,
-                    msg_type: case.output.clone(),
-                    metadata: msg.metadata,
-                    data: msg.data,
-                    timestamp: msg.timestamp,
-                });
+            if self.evaluate_condition(case, &msg)? {
+                // 条件成功,设置分支名称到消息元数据
+                let mut msg = msg;
+                msg.metadata
+                    .insert("switch_branch".into(), case.name.clone());
+                return Ok(msg);
             }
         }
 
-        // 如果没有匹配的 case，使用默认输出或原始消息类型
-        Ok(Message {
-            id: msg.id,
-            msg_type: self.config.default.clone().unwrap_or(msg.msg_type),
-            metadata: msg.metadata,
-            data: msg.data,
-            timestamp: msg.timestamp,
-        })
+        // 没有匹配的条件,使用默认分支
+        if let Some(default) = &self.config.default_next {
+            let mut msg = msg;
+            msg.metadata.insert("switch_branch".into(), default.clone());
+            Ok(msg)
+        } else {
+            // 没有默认分支,返回原始消息
+            Ok(msg)
+        }
     }
 
     fn get_descriptor(&self) -> NodeDescriptor {
         NodeDescriptor {
             type_name: "switch".to_string(),
-            name: "分支节点".to_string(),
+            name: "条件分支节点".to_string(),
             description: "根据条件选择不同的处理分支".to_string(),
         }
     }

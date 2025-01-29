@@ -21,6 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             {
                 "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
                 "type_name": "script",
+                "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
                 "config": {
                     "script": "return { value: msg.data.value + 1, type: msg.type };"
                 },
@@ -29,6 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             {
                 "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
                 "type_name": "filter",
+                "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
                 "config": {
                     "condition": "msg.value > 10",
                     "checkFields": ["value", "type"],
@@ -39,6 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             {
                 "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304",
                 "type_name": "transform",
+                "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
                 "config": {
                     "fields": {
                         "transformed_value": "${msg.value * 2}",
@@ -52,6 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             {
                 "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3305",
                 "type_name": "transform_js",
+                "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
                 "config": {
                     "script": "function transform(msg) { return { ...msg, processed: true, processed_time: new Date().toISOString() }; }"
                 },
@@ -60,24 +64,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             {
                 "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3306",
                 "type_name": "switch",
+                "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
                 "config": {
-                    "conditions": [
+                    "cases": [
                         {
-                            "condition": "msg.value > 20",
-                            "next": "high_value"
+                            "name": "high_temp",
+                            "condition": "msg.data.temperature > 30",
+                            "description": "温度过高告警"
                         },
                         {
-                            "condition": "msg.value > 10",
-                            "next": "medium_value"
+                            "name": "low_temp", 
+                            "condition": "msg.data.temperature < 10",
+                            "description": "温度过低告警"
                         }
                     ],
-                    "default": "low_value"
+                    "default_next": "normal_temp"
                 },
                 "layout": { "x": 900, "y": 100 }
             },
             {
                 "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3307",
                 "type_name": "rest_client",
+                "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
                 "config": {
                     "url": "https://api.example.com/data",
                     "method": "POST",
@@ -104,6 +112,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             {
                 "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3308",
                 "type_name": "weather",
+                "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
                 "config": {
                     "api_key": "your_api_key_here",
                     "city": "${msg.city}",
@@ -114,6 +123,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             {
                 "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3309",
                 "type_name": "log",
+                "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
                 "config": {
                     "template": "处理结果 - ID: ${msg.id}, 类型: ${msg.type}, 值: ${msg.value}, 天气: ${msg.weather}",
                     "level": "info"

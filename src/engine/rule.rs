@@ -124,7 +124,7 @@ impl RuleEngine {
                     if config.is_object() && config.as_object().unwrap().is_empty() {
                         Ok(Arc::new(SwitchNode::new(SwitchConfig {
                             cases: Vec::new(),
-                            default: None,
+                            default_next: None,
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: SwitchConfig = serde_json::from_value(config)?;
