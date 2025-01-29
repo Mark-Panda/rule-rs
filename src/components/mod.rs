@@ -1,5 +1,6 @@
 mod delay;
 mod filter;
+mod js_function;
 mod log;
 mod rest_client;
 mod script;
@@ -11,6 +12,7 @@ mod weather;
 
 pub use delay::{DelayConfig, DelayNode};
 pub use filter::{FilterConfig, FilterNode};
+pub use js_function::{JsFunctionConfig, JsFunctionNode};
 pub use log::*;
 pub use rest_client::{RestClientConfig, RestClientNode};
 pub use script::{ScriptConfig, ScriptNode};
