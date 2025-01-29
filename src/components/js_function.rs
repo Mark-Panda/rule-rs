@@ -48,19 +48,46 @@ impl JsFunctionNode {
         }
     }
 
+    fn replace_function_names(&self, code: &str, config: &JsFunctionConfig) -> String {
+        let mut modified_code = code.to_string();
+        // 遍历所有已定义的函数名
+        for name in config.functions.keys() {
+            // 检查是否包含 "name("
+            let search_pattern = format!("{}(", name);
+            if code.contains(&search_pattern) {
+                // 构造完整的函数名
+                let full_name = format!("{}_{}_{}", name, config.chain_id, config.node_id);
+                // 直接替换函数调用
+                modified_code = modified_code.replace(&search_pattern, &format!("{}(", full_name));
+            }
+        }
+        modified_code
+    }
+
     fn register_functions<'js>(&self, ctx: &rquickjs::Ctx<'js>) -> Result<(), RuleError> {
         // 注册所有函数
         let config = self.config.read().unwrap();
+
+        // 先处理所有函数的代码
+        let mut processed_functions: HashMap<String, String> = HashMap::new();
         for (name, code) in &config.functions {
             let func_name = format!("{}_{}_{}", name, config.chain_id, config.node_id);
+            // 替换函数体中的其他函数调用
+            let modified_code = self.replace_function_names(code, &config);
+            processed_functions.insert(func_name, modified_code);
+        }
+
+        // 然后注册处理后的函数
+        for (func_name, modified_code) in processed_functions {
             let js_code = format!(
                 r#"
                 function {}(msg) {{
                     {}
                 }}
                 "#,
-                func_name, code
+                func_name, modified_code
             );
+            // println!("js_code: {}", js_code); // 添加调试日志
             ctx.eval::<(), _>(js_code)
                 .map_err(|e| RuleError::NodeExecutionError(format!("函数注册失败: {}", e)))?;
         }

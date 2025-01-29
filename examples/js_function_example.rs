@@ -25,7 +25,7 @@ const RULE_CHAIN: &str = r#"{
             "type_name": "log",
             "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
-                "template": "BMI计算结果: ${msg.bmi}, 身体状态: ${msg.category}"
+                "template": "BMI计算结果: ${msg.data.bmi}, 身体状态: ${msg.data.category}"
             },
             "layout": { "x": 300, "y": 100 }
         }

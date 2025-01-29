@@ -2,6 +2,7 @@ use crate::engine::NodeHandler;
 use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use serde::Deserialize;
+use serde_json::Value;
 use tracing::info;
 
 #[derive(Debug, Deserialize)]
@@ -39,9 +40,41 @@ impl LogNode {
         // 替换数据中的变量
         if let Some(obj) = msg.data.as_object() {
             for (key, value) in obj {
-                let placeholder = format!("${{msg.{}}}", key);
-                if result.contains(&placeholder) {
-                    result = result.replace(&placeholder, &value.to_string());
+                println!("key: {}", key);
+                println!("value: {}", value);
+                let placeholder = format!("${{msg.data.{}}}", key);
+                let placeholder_without_markers = format!("msg.data.{}", key);
+                let result_without_markers = result.replace("${", "").replace("}", ""); // 去掉结果中的 ${}
+                println!(
+                    "placeholder_without_markers: {}, result: {}",
+                    placeholder_without_markers, result_without_markers
+                );
+
+                if result_without_markers.contains(&placeholder_without_markers) {
+                    println!("近年来");
+                    let value_str = if value.is_object() || value.is_array() {
+                        println!("近年来啦啦啦啦");
+                        // 检查是否有更深层的路径
+                        let parts: Vec<&str> = key.split('.').collect();
+                        if parts.len() > 1 {
+                            // 递归查找嵌套值
+                            let mut current_value = value;
+                            for &part in &parts[1..] {
+                                if let Some(obj) = current_value.as_object() {
+                                    current_value = obj.get(part).unwrap_or(value);
+                                }
+                            }
+                            current_value.to_string()
+                        } else {
+                            value.to_string()
+                        }
+                    } else {
+                        println!("cuoguol");
+                        value.to_string()
+                    };
+                    result = result.replace(&placeholder, &value_str);
+                } else {
+                    println!("没包含");
                 }
             }
         } else if let Some(value) = msg.data.as_str() {

@@ -52,17 +52,14 @@ pub struct DelayNode {
 }
 
 impl DelayNode {
-    pub fn new(config: DelayConfig) -> Result<Self, RuleError> {
-        let schedule =
-            if let Some(cron) = &config.cron {
-                Some(Schedule::from_str(cron).map_err(|e| {
-                    RuleError::ConfigError(format!("Invalid cron expression: {}", e))
-                })?)
-            } else {
-                None
-            };
+    pub fn new(config: DelayConfig) -> Self {
+        let schedule = config
+            .cron
+            .as_ref()
+            .map(|expr| Schedule::from_str(expr).ok())
+            .flatten();
 
-        Ok(Self { config, schedule })
+        Self { config, schedule }
     }
 
     /// 获取下一次执行时间

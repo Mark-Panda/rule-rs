@@ -12,7 +12,7 @@ const RULE_CHAIN: &str = r#"{
             "type_name": "transform_js",
             "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
-                "script": "const celsius = msg.data.value; const fahrenheit = (celsius * 9/5) + 32; return { data: { celsius: celsius, fahrenheit: fahrenheit } };"
+                "script": "const celsius = msg.data.value; const fahrenheit = (celsius * 9/5) + 32; return { celsius: celsius, fahrenheit: fahrenheit  };"
             },
             "layout": { "x": 100, "y": 100 }
         },

@@ -14,7 +14,10 @@ const RULE_CHAIN: &str = r#"{
             "config": {
                 "delay_ms": 2000,
                 "periodic": true,
-                "period_count": 3
+                "period_count": 3,
+                "common": {
+                    "node_type": "Head"
+                }
             },
             "layout": { "x": 100, "y": 100 }
         },
@@ -23,7 +26,10 @@ const RULE_CHAIN: &str = r#"{
             "type_name": "log",
             "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
-                "template": "延迟消息: ${msg.data.value}"
+                "template": "延迟消息: ${msg.data.value}",
+                "common": {
+                    "node_type": "Tail"
+                }
             },
             "layout": { "x": 300, "y": 100 }
         }

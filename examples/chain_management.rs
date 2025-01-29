@@ -27,8 +27,8 @@ const MAIN_CHAIN: &str = r#"{
     ],
     "connections": [
         {
-            "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
-            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
+            "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
+            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
             "type_name": "success"
         }
     ],

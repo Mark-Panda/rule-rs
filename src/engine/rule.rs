@@ -53,23 +53,11 @@ impl RuleEngine {
                 "delay",
                 Arc::new(|config| {
                     if config.is_object() && config.as_object().unwrap().is_empty() {
-                        DelayNode::new(DelayConfig {
-                            delay_ms: 0,
-                            periodic: false,
-                            period_count: 0,
-                            cron: None,
-                            timezone_offset: 0,
-                            common: CommonConfig {
-                                node_type: NodeType::Head,
-                            },
-                        })
-                        .map(|node| Arc::new(node) as Arc<dyn NodeHandler>)
-                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+                        Ok(Arc::new(DelayNode::new(DelayConfig::default()))
+                            as Arc<dyn NodeHandler>)
                     } else {
                         let config: DelayConfig = serde_json::from_value(config)?;
-                        DelayNode::new(config)
-                            .map(|node| Arc::new(node) as Arc<dyn NodeHandler>)
-                            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+                        Ok(Arc::new(DelayNode::new(config)) as Arc<dyn NodeHandler>)
                     }
                 }),
             ),
