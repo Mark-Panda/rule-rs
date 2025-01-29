@@ -543,6 +543,11 @@ impl RuleEngine {
             .ok_or_else(|| RuleError::ChainNotFound(id))?;
         Ok(())
     }
+
+    /// 注册自定义节点类型
+    pub async fn register_node_type(&self, type_name: &str, factory: NodeFactory) {
+        self.node_registry.register(type_name, factory).await;
+    }
 }
 
 impl RuleChain {
