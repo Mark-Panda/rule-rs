@@ -1,5 +1,5 @@
 use crate::engine::NodeHandler;
-use crate::types::{Message, NodeContext, NodeDescriptor, RuleError};
+use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use chrono::{DateTime, Local, Utc};
 use cron::Schedule;
@@ -12,28 +12,37 @@ use tokio::time::sleep;
 #[derive(Debug, Deserialize)]
 pub struct DelayConfig {
     /// 延迟时间(毫秒)
-    #[serde(default = "default_delay")]
     pub delay_ms: u64,
 
     /// 是否周期性延迟
-    #[serde(default)]
     pub periodic: bool,
 
     /// 周期执行次数,0表示无限循环
-    #[serde(default)]
     pub period_count: u32,
 
     /// Cron表达式
-    #[serde(default)]
     pub cron: Option<String>,
 
     /// 时区偏移(小时)
-    #[serde(default)]
     pub timezone_offset: i32,
+
+    #[serde(flatten)]
+    pub common: CommonConfig,
 }
 
-fn default_delay() -> u64 {
-    1000 // 默认延迟1秒
+impl Default for DelayConfig {
+    fn default() -> Self {
+        Self {
+            delay_ms: 0,
+            periodic: false,
+            period_count: 0,
+            cron: None,
+            timezone_offset: 0,
+            common: CommonConfig {
+                node_type: NodeType::Head,
+            },
+        }
+    }
 }
 
 /// 延迟处理节点

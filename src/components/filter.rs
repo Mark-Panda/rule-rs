@@ -1,5 +1,5 @@
 use crate::engine::NodeHandler;
-use crate::types::{Message, NodeContext, NodeDescriptor, RuleError};
+use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use serde::Deserialize;
 
@@ -7,10 +7,24 @@ pub struct FilterNode {
     pub(crate) config: FilterConfig,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct FilterConfig {
     pub condition: String,
     pub js_script: Option<String>,
+    #[serde(flatten)]
+    pub common: CommonConfig,
+}
+
+impl Default for FilterConfig {
+    fn default() -> Self {
+        Self {
+            condition: "true".to_string(),
+            js_script: None,
+            common: CommonConfig {
+                node_type: NodeType::Middle,
+            },
+        }
+    }
 }
 
 impl FilterNode {

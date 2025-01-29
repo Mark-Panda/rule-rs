@@ -1,5 +1,5 @@
 use crate::engine::NodeHandler;
-use crate::types::{Message, NodeContext, NodeDescriptor, RuleError};
+use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use rquickjs::{Context, Function, Runtime};
 use serde::Deserialize;
@@ -9,10 +9,24 @@ pub struct ScriptNode {
     pub(crate) config: ScriptConfig,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct ScriptConfig {
     pub script: String,
     pub output_type: Option<String>,
+    #[serde(flatten)]
+    pub common: CommonConfig,
+}
+
+impl Default for ScriptConfig {
+    fn default() -> Self {
+        Self {
+            script: "return msg;".to_string(),
+            output_type: None,
+            common: CommonConfig {
+                node_type: NodeType::Middle,
+            },
+        }
+    }
 }
 
 impl ScriptNode {

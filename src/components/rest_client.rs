@@ -1,19 +1,38 @@
 use crate::engine::NodeHandler;
-use crate::types::{Message, NodeContext, NodeDescriptor, RuleError};
+use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::Value;
+use std::collections::HashMap;
 use std::time::Duration;
 
 #[derive(Debug, Deserialize)]
 pub struct RestClientConfig {
     pub url: String,
     pub method: String,
-    pub headers: Option<serde_json::Value>,
+    pub headers: Option<HashMap<String, String>>,
     pub timeout_ms: Option<u64>,
     pub success_branch: Option<String>, // 成功分支名称
     pub error_branch: Option<String>,   // 失败分支名称
+    #[serde(flatten)]
+    pub common: CommonConfig,
+}
+
+impl Default for RestClientConfig {
+    fn default() -> Self {
+        Self {
+            url: "http://localhost".to_string(),
+            method: "GET".to_string(),
+            headers: None,
+            timeout_ms: None,
+            success_branch: None,
+            error_branch: None,
+            common: CommonConfig {
+                node_type: NodeType::Middle,
+            },
+        }
+    }
 }
 
 pub struct RestClientNode {
@@ -53,10 +72,8 @@ impl RestClientNode {
 
         // 添加请求头
         if let Some(headers) = &self.config.headers {
-            for (key, value) in headers.as_object().unwrap() {
-                if let Some(value_str) = value.as_str() {
-                    request = request.header(key, value_str);
-                }
+            for (key, value) in headers {
+                request = request.header(key, value);
             }
         }
 

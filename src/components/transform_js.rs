@@ -1,5 +1,5 @@
 use crate::engine::NodeHandler;
-use crate::types::{Message, NodeContext, NodeDescriptor, RuleError};
+use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use rquickjs::{Context, Runtime};
 use serde::Deserialize;
@@ -9,9 +9,22 @@ pub struct TransformJsNode {
     pub(crate) config: TransformJsConfig,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct TransformJsConfig {
     pub script: String,
+    #[serde(flatten)]
+    pub common: CommonConfig,
+}
+
+impl Default for TransformJsConfig {
+    fn default() -> Self {
+        Self {
+            script: "return msg;".to_string(),
+            common: CommonConfig {
+                node_type: NodeType::Middle,
+            },
+        }
+    }
 }
 
 impl TransformJsNode {

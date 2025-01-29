@@ -39,3 +39,23 @@ pub struct Metadata {
     pub created_at: i64,
     pub updated_at: i64,
 }
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub enum NodeType {
+    #[serde(rename = "head")]
+    Head, // 头节点
+    #[serde(rename = "middle")]
+    Middle, // 中节点
+    #[serde(rename = "tail")]
+    Tail, // 尾节点
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct CommonConfig {
+    #[serde(default = "default_node_type")]
+    pub node_type: NodeType,
+}
+
+fn default_node_type() -> NodeType {
+    NodeType::Middle
+}

@@ -1,12 +1,27 @@
 use crate::engine::NodeHandler;
-use crate::types::ExecutionContext;
-use crate::types::{Message, NodeContext, NodeDescriptor, RuleError};
+use crate::types::{
+    CommonConfig, ExecutionContext, Message, NodeContext, NodeDescriptor, NodeType, RuleError,
+};
 use async_trait::async_trait;
 use serde::Deserialize;
+use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
 pub struct SubchainConfig {
-    pub chain_id: uuid::Uuid,
+    pub chain_id: Uuid,
+    #[serde(flatten)]
+    pub common: CommonConfig,
+}
+
+impl Default for SubchainConfig {
+    fn default() -> Self {
+        Self {
+            chain_id: Uuid::nil(),
+            common: CommonConfig {
+                node_type: NodeType::Middle,
+            },
+        }
+    }
 }
 
 pub struct SubchainNode {

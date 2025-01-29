@@ -7,8 +7,10 @@ use crate::components::{
 };
 use crate::engine::{NodeFactory, NodeHandler, NodeRegistry, VersionManager};
 use crate::types::{
-    ExecutionContext, Message, Node, NodeContext, NodeDescriptor, RuleChain, RuleError,
+    CommonConfig, ExecutionContext, Message, Node, NodeContext, NodeDescriptor, NodeType,
+    RuleChain, RuleError,
 };
+use serde_json::json;
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::pin::Pin;
@@ -35,9 +37,11 @@ impl RuleEngine {
                 "log",
                 Arc::new(|config| {
                     if config.is_object() && config.as_object().unwrap().is_empty() {
-                        // 用于获取描述符时使用默认配置
                         Ok(Arc::new(LogNode::new(LogConfig {
                             template: "".to_string(),
+                            common: CommonConfig {
+                                node_type: NodeType::Tail,
+                            },
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: LogConfig = serde_json::from_value(config)?;
@@ -49,18 +53,23 @@ impl RuleEngine {
                 "delay",
                 Arc::new(|config| {
                     if config.is_object() && config.as_object().unwrap().is_empty() {
-                        let node = DelayNode::new(DelayConfig {
+                        DelayNode::new(DelayConfig {
                             delay_ms: 0,
                             periodic: false,
                             period_count: 0,
                             cron: None,
                             timezone_offset: 0,
-                        })?;
-                        Ok(Arc::new(node) as Arc<dyn NodeHandler>)
+                            common: CommonConfig {
+                                node_type: NodeType::Head,
+                            },
+                        })
+                        .map(|node| Arc::new(node) as Arc<dyn NodeHandler>)
+                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
                     } else {
                         let config: DelayConfig = serde_json::from_value(config)?;
-                        let node = DelayNode::new(config)?;
-                        Ok(Arc::new(node) as Arc<dyn NodeHandler>)
+                        DelayNode::new(config)
+                            .map(|node| Arc::new(node) as Arc<dyn NodeHandler>)
+                            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
                     }
                 }),
             ),
@@ -71,6 +80,9 @@ impl RuleEngine {
                         Ok(Arc::new(FilterNode::new(FilterConfig {
                             condition: "true".to_string(),
                             js_script: None,
+                            common: CommonConfig {
+                                node_type: NodeType::Middle,
+                            },
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: FilterConfig = serde_json::from_value(config)?;
@@ -83,7 +95,10 @@ impl RuleEngine {
                 Arc::new(|config| {
                     if config.is_object() && config.as_object().unwrap().is_empty() {
                         Ok(Arc::new(TransformNode::new(TransformConfig {
-                            template: serde_json::json!({}), // 使用 json! 宏创建空对象
+                            template: json!({}),
+                            common: CommonConfig {
+                                node_type: NodeType::Middle,
+                            },
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: TransformConfig = serde_json::from_value(config)?;
@@ -97,6 +112,9 @@ impl RuleEngine {
                     if config.is_object() && config.as_object().unwrap().is_empty() {
                         Ok(Arc::new(TransformJsNode::new(TransformJsConfig {
                             script: "return msg;".to_string(),
+                            common: CommonConfig {
+                                node_type: NodeType::Middle,
+                            },
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: TransformJsConfig = serde_json::from_value(config)?;
@@ -111,6 +129,9 @@ impl RuleEngine {
                         Ok(Arc::new(ScriptNode::new(ScriptConfig {
                             script: "return msg;".to_string(),
                             output_type: None,
+                            common: CommonConfig {
+                                node_type: NodeType::Middle,
+                            },
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: ScriptConfig = serde_json::from_value(config)?;
@@ -125,6 +146,9 @@ impl RuleEngine {
                         Ok(Arc::new(SwitchNode::new(SwitchConfig {
                             cases: Vec::new(),
                             default_next: None,
+                            common: CommonConfig {
+                                node_type: NodeType::Middle,
+                            },
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: SwitchConfig = serde_json::from_value(config)?;
@@ -143,6 +167,9 @@ impl RuleEngine {
                             timeout_ms: None,
                             success_branch: None,
                             error_branch: None,
+                            common: CommonConfig {
+                                node_type: NodeType::Middle,
+                            },
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: RestClientConfig = serde_json::from_value(config)?;
@@ -158,6 +185,9 @@ impl RuleEngine {
                             api_key: "demo".to_string(),
                             city: "".to_string(),
                             language: "zh".to_string(),
+                            common: CommonConfig {
+                                node_type: NodeType::Middle,
+                            },
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: WeatherConfig = serde_json::from_value(config)?;
@@ -171,6 +201,9 @@ impl RuleEngine {
                     if config.is_object() && config.as_object().unwrap().is_empty() {
                         Ok(Arc::new(SubchainNode::new(SubchainConfig {
                             chain_id: Uuid::nil(),
+                            common: CommonConfig {
+                                node_type: NodeType::Middle,
+                            },
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: SubchainConfig = serde_json::from_value(config)?;
@@ -187,6 +220,9 @@ impl RuleEngine {
                             main: "main".to_string(),
                             chain_id: String::new(),
                             node_id: String::new(),
+                            common: CommonConfig {
+                                node_type: NodeType::Middle,
+                            },
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: JsFunctionConfig = serde_json::from_value(config)?;
@@ -330,6 +366,9 @@ impl RuleEngine {
     pub async fn load_chain(&self, content: &str) -> Result<Uuid, RuleError> {
         let chain: RuleChain =
             serde_json::from_str(content).map_err(|e| RuleError::ConfigError(e.to_string()))?;
+
+        // 验证节点类型限制
+        chain.validate()?;
 
         // 检查循环依赖
         self.check_circular_dependency(&chain).await?;
@@ -554,5 +593,43 @@ impl RuleChain {
             .find(|node| node.id == conn.to_id)
             .ok_or_else(|| RuleError::ConfigError("Invalid connection".to_string()))
             .map(Some)
+    }
+
+    pub fn validate(&self) -> Result<(), RuleError> {
+        // 检查每个节点的连接是否符合类型限制
+        for node in &self.nodes {
+            let node_type = self.get_node_type(node)?;
+
+            // 检查头节点不能被指向
+            if node_type == NodeType::Head {
+                let has_incoming = self.connections.iter().any(|conn| conn.to_id == node.id);
+                if has_incoming {
+                    return Err(RuleError::ConfigError(format!(
+                        "头结点 {} 不能被其他节点指向",
+                        node.type_name
+                    )));
+                }
+            }
+
+            // 检查尾节点不能指向其他节点
+            if node_type == NodeType::Tail {
+                let has_outgoing = self.connections.iter().any(|conn| conn.from_id == node.id);
+                if has_outgoing {
+                    return Err(RuleError::ConfigError(format!(
+                        "尾节点 {} 不能指向其他节点",
+                        node.type_name
+                    )));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn get_node_type(&self, node: &Node) -> Result<NodeType, RuleError> {
+        match node.type_name.as_str() {
+            "log" => Ok(NodeType::Tail),
+            "delay" => Ok(NodeType::Head),
+            _ => Ok(NodeType::Middle),
+        }
     }
 }

@@ -1,5 +1,5 @@
 use crate::engine::NodeHandler;
-use crate::types::{Message, NodeContext, NodeDescriptor, RuleError};
+use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -10,12 +10,22 @@ use tracing::{debug, error, info};
 pub struct WeatherConfig {
     pub api_key: String,
     pub city: String,
-    #[serde(default = "default_language")]
     pub language: String,
+    #[serde(flatten)]
+    pub common: CommonConfig,
 }
 
-fn default_language() -> String {
-    "zh".to_string()
+impl Default for WeatherConfig {
+    fn default() -> Self {
+        Self {
+            api_key: "demo".to_string(),
+            city: String::new(),
+            language: "zh".to_string(),
+            common: CommonConfig {
+                node_type: NodeType::Middle,
+            },
+        }
+    }
 }
 
 // 组件实现

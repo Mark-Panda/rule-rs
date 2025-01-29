@@ -1,16 +1,30 @@
 use crate::engine::NodeHandler;
-use crate::types::{Message, NodeContext, NodeDescriptor, RuleError};
+use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use serde::Deserialize;
+use serde_json::json;
 use serde_json::Value;
 
 pub struct TransformNode {
     pub(crate) config: TransformConfig,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct TransformConfig {
     pub template: Value,
+    #[serde(flatten)]
+    pub common: CommonConfig,
+}
+
+impl Default for TransformConfig {
+    fn default() -> Self {
+        Self {
+            template: json!({}),
+            common: CommonConfig {
+                node_type: NodeType::Middle,
+            },
+        }
+    }
 }
 
 impl TransformNode {
