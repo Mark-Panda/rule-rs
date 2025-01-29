@@ -6,18 +6,19 @@ use serde::Deserialize;
 use serde_json::Value;
 use std::time::Duration;
 
-pub struct RestClientNode {
-    pub(crate) config: RestClientConfig,
-    client: Client,
-}
-
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct RestClientConfig {
     pub url: String,
     pub method: String,
-    pub headers: Option<serde_json::Map<String, Value>>,
+    pub headers: Option<serde_json::Value>,
     pub timeout_ms: Option<u64>,
-    pub output_type: Option<String>,
+    pub success_branch: Option<String>, // 成功分支名称
+    pub error_branch: Option<String>,   // 失败分支名称
+}
+
+pub struct RestClientNode {
+    config: RestClientConfig,
+    client: Client,
 }
 
 impl RestClientNode {
@@ -26,7 +27,6 @@ impl RestClientNode {
             .timeout(Duration::from_millis(config.timeout_ms.unwrap_or(5000)))
             .build()
             .unwrap();
-
         Self { config, client }
     }
 
@@ -47,21 +47,13 @@ impl RestClientNode {
             self.config.url.clone()
         };
 
-        let mut request = match self.config.method.to_uppercase().as_str() {
-            "GET" => self.client.get(&url),
-            "POST" => self.client.post(&url),
-            "PUT" => self.client.put(&url),
-            "DELETE" => self.client.delete(&url),
-            _ => {
-                return Err(RuleError::NodeExecutionError(
-                    "不支持的 HTTP 方法".to_string(),
-                ))
-            }
-        };
+        let mut request = self
+            .client
+            .request(self.config.method.parse().unwrap(), &url);
 
         // 添加请求头
         if let Some(headers) = &self.config.headers {
-            for (key, value) in headers {
+            for (key, value) in headers.as_object().unwrap() {
                 if let Some(value_str) = value.as_str() {
                     request = request.header(key, value_str);
                 }
@@ -86,12 +78,17 @@ impl RestClientNode {
             .await
             .map_err(|e| RuleError::NodeExecutionError(format!("响应解析失败: {}", e)))?;
 
-        // 检查状态码
-        if !status.is_success() {
-            return Err(RuleError::NodeExecutionError(format!(
-                "HTTP请求返回错误状态码: {}",
-                status
-            )));
+        // 检查状态码和错误响应
+        if !status.is_success() || body.get("error").is_some() {
+            let error_msg = if let Some(error) = body.get("error") {
+                error["message"]
+                    .as_str()
+                    .unwrap_or("Unknown error")
+                    .to_string()
+            } else {
+                format!("HTTP请求返回错误状态码: {}", status)
+            };
+            return Err(RuleError::NodeExecutionError(error_msg));
         }
 
         // 构造响应数据
@@ -105,25 +102,41 @@ impl RestClientNode {
 #[async_trait]
 impl NodeHandler for RestClientNode {
     async fn handle<'a>(&self, _ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
-        let response_data = self.make_request(&msg).await?;
-        Ok(Message {
-            id: msg.id,
-            msg_type: self
-                .config
-                .output_type
-                .clone()
-                .unwrap_or("http_response".to_string()),
-            metadata: msg.metadata,
-            data: response_data,
-            timestamp: msg.timestamp,
-        })
+        let mut msg = msg;
+
+        // 发送请求并处理结果
+        match self.make_request(&msg).await {
+            Ok(response_data) => {
+                // 请求成功
+                msg.data = response_data;
+                msg.msg_type = "http_response".to_string();
+
+                // 设置成功分支
+                if let Some(branch) = &self.config.success_branch {
+                    msg.metadata.insert("branch_name".into(), branch.clone());
+                }
+
+                Ok(msg)
+            }
+            Err(e) => {
+                // 请求失败
+                msg.metadata.insert("error".into(), e.to_string());
+
+                // 设置失败分支
+                if let Some(branch) = &self.config.error_branch {
+                    msg.metadata.insert("branch_name".into(), branch.clone());
+                }
+
+                Ok(msg) // 注意这里返回 Ok 而不是 Err
+            }
+        }
     }
 
     fn get_descriptor(&self) -> NodeDescriptor {
         NodeDescriptor {
             type_name: "rest_client".to_string(),
-            name: "REST客户端".to_string(),
-            description: "发送HTTP请求".to_string(),
+            name: "HTTP客户端".to_string(),
+            description: "发送HTTP请求,支持成功/失败分支路由".to_string(),
         }
     }
 }

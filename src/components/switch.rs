@@ -58,22 +58,22 @@ impl SwitchNode {
 
 #[async_trait]
 impl NodeHandler for SwitchNode {
-    async fn handle<'a>(&self, _ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(
+        &self,
+        _ctx: NodeContext<'a>,
+        mut msg: Message,
+    ) -> Result<Message, RuleError> {
         // 遍历所有分支条件
         for case in &self.config.cases {
             if self.evaluate_condition(case, &msg)? {
-                // 条件成功,设置分支名称到消息元数据
-                let mut msg = msg;
-                msg.metadata
-                    .insert("switch_branch".into(), case.name.clone());
+                msg.metadata.insert("branch_name".into(), case.name.clone());
                 return Ok(msg);
             }
         }
 
         // 没有匹配的条件,使用默认分支
         if let Some(default) = &self.config.default_next {
-            let mut msg = msg;
-            msg.metadata.insert("switch_branch".into(), default.clone());
+            msg.metadata.insert("branch_name".into(), default.clone());
             Ok(msg)
         } else {
             // 没有默认分支,返回原始消息

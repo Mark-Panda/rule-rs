@@ -141,7 +141,8 @@ impl RuleEngine {
                             method: "GET".to_string(),
                             headers: None,
                             timeout_ms: None,
-                            output_type: None,
+                            success_branch: None,
+                            error_branch: None,
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: RestClientConfig = serde_json::from_value(config)?;
@@ -395,7 +396,7 @@ impl RuleEngine {
             ctx.msg = self.execute_node(node, &node_ctx, ctx.msg.clone()).await?;
 
             // 获取下一个节点
-            current_node = chain.get_next_node(&node.id, &ctx)?;
+            current_node = chain.get_next_node(&node.id, ctx)?;
         }
 
         Ok(ctx.msg.clone())
@@ -500,21 +501,42 @@ impl RuleChain {
     pub fn get_next_node(
         &self,
         current_id: &Uuid,
-        _ctx: &ExecutionContext,
+        ctx: &ExecutionContext,
     ) -> Result<Option<&Node>, RuleError> {
-        let next_conn = self
+        // 获取所有从当前节点出发的连接
+        let next_conns: Vec<_> = self
             .connections
             .iter()
-            .find(|conn| &conn.from_id == current_id);
+            .filter(|conn| &conn.from_id == current_id)
+            .collect();
 
-        if let Some(conn) = next_conn {
-            self.nodes
-                .iter()
-                .find(|node| node.id == conn.to_id)
-                .ok_or_else(|| RuleError::ConfigError("Invalid connection".to_string()))
-                .map(Some)
-        } else {
-            Ok(None)
+        // 如果没有连接，返回 None
+        if next_conns.is_empty() {
+            return Ok(None);
         }
+
+        // 检查消息元数据中的分支名称
+        if let Some(branch) = ctx.msg.metadata.get("branch_name") {
+            // 查找匹配分支名称的连接
+            if let Some(conn) = next_conns
+                .iter()
+                .find(|conn| conn.type_name == branch.to_string())
+            {
+                return self
+                    .nodes
+                    .iter()
+                    .find(|node| node.id == conn.to_id)
+                    .ok_or_else(|| RuleError::ConfigError("Invalid connection".to_string()))
+                    .map(Some);
+            }
+        }
+
+        // 如果没有匹配的分支，使用第一个连接
+        let conn = &next_conns[0];
+        self.nodes
+            .iter()
+            .find(|node| node.id == conn.to_id)
+            .ok_or_else(|| RuleError::ConfigError("Invalid connection".to_string()))
+            .map(Some)
     }
 }

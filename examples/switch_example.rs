@@ -38,7 +38,7 @@ const RULE_CHAIN: &str = r#"{
             "layout": { "x": 300, "y": 50 }
         },
         {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304", 
+            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304",
             "type_name": "log",
             "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
@@ -49,7 +49,7 @@ const RULE_CHAIN: &str = r#"{
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3305",
             "type_name": "log",
-            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301", 
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
                 "template": "温度正常: ${msg.data.temperature}°C"
             },
@@ -82,35 +82,53 @@ const RULE_CHAIN: &str = r#"{
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 初始化日志系统
     tracing_subscriber::fmt()
         .with_max_level(Level::DEBUG)
         .init();
 
-    // 创建引擎实例
     let engine = RuleEngine::new().await;
-
-    // 加载规则链
     engine.load_chain(RULE_CHAIN).await?;
 
-    // 测试不同温度场景
-    let test_temps = vec![35.0, 5.0, 25.0];
+    // 测试高温场景
+    let high_temp_msg = Message::new(
+        "temperature",
+        json!({
+            "temperature": 35
+        }),
+    );
 
-    for temp in test_temps {
-        let msg = Message::new(
-            "temperature",
-            json!({
-                "temperature": temp,
-                "device_id": "sensor_001",
-                "timestamp": chrono::Utc::now().timestamp_millis()
-            }),
-        );
+    info!("测试高温场景 - 35°C");
+    match engine.process_msg(high_temp_msg).await {
+        Ok(_) => info!("高温场景处理完成"),
+        Err(e) => info!("高温场景处理失败: {:?}", e),
+    }
 
-        info!("处理温度数据: {}°C", temp);
-        match engine.process_msg(msg).await {
-            Ok(_) => info!("温度处理完成"),
-            Err(e) => info!("处理失败: {:?}", e),
-        }
+    // 测试低温场景
+    let low_temp_msg = Message::new(
+        "temperature",
+        json!({
+            "temperature": 5
+        }),
+    );
+
+    info!("测试低温场景 - 5°C");
+    match engine.process_msg(low_temp_msg).await {
+        Ok(_) => info!("低温场景处理完成"),
+        Err(e) => info!("低温场景处理失败: {:?}", e),
+    }
+
+    // 测试正常温度场景
+    let normal_temp_msg = Message::new(
+        "temperature",
+        json!({
+            "temperature": 25
+        }),
+    );
+
+    info!("测试正常温度场景 - 25°C");
+    match engine.process_msg(normal_temp_msg).await {
+        Ok(_) => info!("正常温度场景处理完成"),
+        Err(e) => info!("正常温度场景处理失败: {:?}", e),
     }
 
     Ok(())
