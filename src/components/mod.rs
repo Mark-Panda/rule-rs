@@ -9,6 +9,7 @@ mod switch;
 mod transform;
 mod transform_js;
 mod weather;
+mod schedule;
 
 pub use delay::{DelayConfig, DelayNode};
 pub use filter::{FilterConfig, FilterNode};
@@ -21,3 +22,4 @@ pub use switch::{SwitchConfig, SwitchNode};
 pub use transform::{TransformConfig, TransformNode};
 pub use transform_js::{TransformJsConfig, TransformJsNode};
 pub use weather::*;
+pub use schedule::{ScheduleConfig, ScheduleNode};

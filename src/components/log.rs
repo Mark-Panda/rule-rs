@@ -2,7 +2,6 @@ use crate::engine::NodeHandler;
 use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::Value;
 use tracing::info;
 
 #[derive(Debug, Deserialize)]
@@ -51,9 +50,7 @@ impl LogNode {
                 );
 
                 if result_without_markers.contains(&placeholder_without_markers) {
-                    println!("近年来");
                     let value_str = if value.is_object() || value.is_array() {
-                        println!("近年来啦啦啦啦");
                         // 检查是否有更深层的路径
                         let parts: Vec<&str> = key.split('.').collect();
                         if parts.len() > 1 {
@@ -69,12 +66,9 @@ impl LogNode {
                             value.to_string()
                         }
                     } else {
-                        println!("cuoguol");
                         value.to_string()
                     };
                     result = result.replace(&placeholder, &value_str);
-                } else {
-                    println!("没包含");
                 }
             }
         } else if let Some(value) = msg.data.as_str() {

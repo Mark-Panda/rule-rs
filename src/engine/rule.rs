@@ -1,9 +1,9 @@
 use crate::aop::{InterceptorManager, MessageInterceptor, NodeInterceptor};
 use crate::components::{
     DelayConfig, DelayNode, FilterConfig, FilterNode, JsFunctionConfig, JsFunctionNode, LogConfig,
-    LogNode, RestClientConfig, RestClientNode, ScriptConfig, ScriptNode, SubchainConfig,
-    SubchainNode, SwitchConfig, SwitchNode, TransformConfig, TransformJsConfig, TransformJsNode,
-    TransformNode, WeatherConfig, WeatherNode,
+    LogNode, RestClientConfig, RestClientNode, ScheduleConfig, ScheduleNode, ScriptConfig,
+    ScriptNode, SubchainConfig, SubchainNode, SwitchConfig, SwitchNode, TransformConfig,
+    TransformJsConfig, TransformJsNode, TransformNode, WeatherConfig, WeatherNode,
 };
 use crate::engine::{NodeFactory, NodeHandler, NodeRegistry, VersionManager};
 use crate::types::{
@@ -58,6 +58,18 @@ impl RuleEngine {
                     } else {
                         let config: DelayConfig = serde_json::from_value(config)?;
                         Ok(Arc::new(DelayNode::new(config)) as Arc<dyn NodeHandler>)
+                    }
+                }),
+            ),
+            (
+                "schedule",
+                Arc::new(|config| {
+                    if config.is_object() && config.as_object().unwrap().is_empty() {
+                        Ok(Arc::new(ScheduleNode::new(ScheduleConfig::default()))
+                            as Arc<dyn NodeHandler>)
+                    } else {
+                        let config: ScheduleConfig = serde_json::from_value(config)?;
+                        Ok(Arc::new(ScheduleNode::new(config)) as Arc<dyn NodeHandler>)
                     }
                 }),
             ),
