@@ -8,64 +8,143 @@
 - 状态管理: Pinia
 - API 客户端: Axios
 
-## 2. 核心功能模块
+## 2. 规则链数据结构
 
-### 2.1 规则链列表页
 ```typescript
+// 规则链定义
 interface RuleChain {
-    id: string;
-    name: string;
-    root: boolean;
-    created_at: number;
-    updated_at: number;
-    version: number;
+  id: string;          // UUID
+  name: string;        // 规则链名称
+  root: boolean;       // 是否为根规则链
+  nodes: Node[];       // 节点列表
+  connections: Connection[]; // 连接关系
+  metadata: Metadata;  // 元数据
 }
 
-// 列表页功能
-- 规则链 CRUD
-- 版本管理
-- 导入/导出
-- 复制/克隆
-```
-
-### 2.2 规则链编辑器
-```typescript
+// 节点定义
 interface Node {
-    id: string;
-    type: string;
-    position: { x: number, y: number };
-    data: {
-        type_name: string;
-        chain_id: string;
-        config: Record<string, any>;
-    }
+  id: string;         // 节点ID
+  type_name: string;  // 节点类型
+  chain_id: string;   // 所属规则链ID
+  config: any;        // 节点配置
+  layout: Position;   // 节点位置
 }
 
-// 编辑器功能
+// 连接关系
+interface Connection {
+  from_id: string;    // 源节点ID
+  to_id: string;      // 目标节点ID  
+  type_name: string;  // 连接类型
+}
+
+// 节点位置
+interface Position {
+  x: number;
+  y: number;
+}
+
+// 元数据
+interface Metadata {
+  version: number;     // 版本号
+  created_at: number;  // 创建时间
+  updated_at: number;  // 更新时间
+}
+```
+
+## 3. 编辑器功能模块
+
+### 3.1 画布操作
 - 拖拽添加节点
-- 连线管理
-- 节点配置
-- 画布操作
-```
+- 连线操作
+- 移动/缩放
+- 对齐网格
+- 撤销/重做
 
-### 2.3 组件面板
+### 3.2 节点配置
+- 基础属性配置
+- 节点类型参数配置
+- JSON Schema 验证
+- 配置模板
+
+### 3.3 规则链管理
+- 新建规则链
+- 导入/导出
+- 版本管理
+- 子规则链
+
+### 3.4 调试功能
+- 消息模拟器
+- 执行路径追踪
+- 断点调试
+- 日志查看
+
+## 4. API 接口
+
+### 4.1 规则链管理
 ```typescript
-interface ComponentMeta {
-    type_name: string;
-    name: string;
-    description: string;
-    config_schema: JSONSchema;
-    icon: string;
-}
+// 获取规则链列表
+GET /api/chains
 
-// 组件面板功能
-- 组件分类
-- 组件搜索
-- 拖拽支持
-- 配置说明
+// 创建规则链
+POST /api/chains
+Body: RuleChain
+
+// 更新规则链
+PUT /api/chains/:id 
+Body: RuleChain
+
+// 删除规则链
+DELETE /api/chains/:id
 ```
 
-## 3. 页面布局
+### 4.2 组件管理
+```typescript
+// 获取组件列表
+GET /api/components
+
+// 获取组件配置模板
+GET /api/components/:type/template
+```
+
+### 4.3 调试接口
+```typescript
+// 发送测试消息
+POST /api/debug/message
+Body: Message
+
+// 获取执行日志
+GET /api/debug/logs/:messageId
+```
+
+## 5. 开发指南
+
+### 5.1 环境准备
+```bash
+# 安装依赖
+pnpm install
+
+# 启动开发服务器
+pnpm dev
+
+# 构建
+pnpm build
+
+# 测试
+pnpm test
+```
+
+### 5.2 目录结构
+```
+src/
+  ├── components/     # 组件
+  ├── views/         # 页面
+  ├── stores/        # 状态管理
+  ├── api/           # API封装
+  ├── utils/         # 工具函数
+  └── types/         # 类型定义
+```
+
+## 6. 页面布局
 
 ```
 +------------------------+
@@ -80,7 +159,7 @@ interface ComponentMeta {
 +------------------------+
 ```
 
-## 4. 数据流转
+## 7. 数据流转
 
 ```mermaid
 graph LR
@@ -90,33 +169,7 @@ graph LR
     D --> E[规则引擎]
 ```
 
-## 5. API 接口
-
-### 5.1 规则链管理
-```typescript
-// 规则链列表
-GET /api/chains
-
-// 加载规则链
-GET /api/chains/:id
-
-// 保存规则链
-POST /api/chains
-
-// 删除规则链
-DELETE /api/chains/:id
-```
-
-### 5.2 组件管理
-```typescript
-// 获取组件列表
-GET /api/components
-
-// 获取组件配置模板
-GET /api/components/:type/schema
-```
-
-## 6. 节点配置表单
+## 8. 节点配置表单
 
 为每种节点类型定义配置表单:
 
@@ -137,18 +190,77 @@ const NODE_FORMS = {
             type: 'monaco-editor',
             label: 'JavaScript代码',
             language: 'javascript'
+        }
+    },
+    
+    // 过滤器节点
+    filter: {
+        condition: {
+            type: 'textarea',
+            label: '过滤条件',
+            required: true
         },
-        output_type: {
-            type: 'input',
-            label: '输出类型'
+        js_script: {
+            type: 'monaco-editor',
+            label: '自定义JS条件(可选)',
+            language: 'javascript'
         }
     },
     
     // 转换节点
     transform: {
-        template: {
+        fields: {
             type: 'json-editor',
-            label: '转换模板'
+            label: '字段映射',
+            required: true
+        },
+        dropFields: {
+            type: 'array',
+            label: '删除字段'
+        }
+    },
+    
+    // JS转换节点
+    transform_js: {
+        script: {
+            type: 'monaco-editor',
+            label: 'JavaScript转换脚本',
+            language: 'javascript',
+            required: true
+        }
+    },
+    
+    // 延时节点
+    delay: {
+        delay_ms: {
+            type: 'number',
+            label: '延迟时间(毫秒)',
+            required: true,
+            min: 0
+        },
+        periodic: {
+            type: 'switch',
+            label: '周期性执行'
+        },
+        period_count: {
+            type: 'number',
+            label: '重复次数',
+            min: 1,
+            show: 'periodic'
+        }
+    },
+    
+    // 定时任务节点
+    schedule: {
+        cron: {
+            type: 'input',
+            label: 'Cron表达式',
+            required: true
+        },
+        timezone_offset: {
+            type: 'number',
+            label: '时区偏移(小时)',
+            default: 8
         }
     },
     
@@ -167,12 +279,59 @@ const NODE_FORMS = {
         headers: {
             type: 'key-value',
             label: '请求头'
+        },
+        timeout_ms: {
+            type: 'number',
+            label: '超时时间(毫秒)',
+            default: 5000
+        },
+        success_branch: {
+            type: 'input',
+            label: '成功分支名称'
+        },
+        error_branch: {
+            type: 'input', 
+            label: '失败分支名称'
+        }
+    },
+    
+    // 天气服务节点
+    weather: {
+        api_key: {
+            type: 'password',
+            label: 'API密钥',
+            required: true
+        },
+        city: {
+            type: 'input',
+            label: '城市名称',
+            required: true
+        },
+        language: {
+            type: 'select',
+            label: '语言',
+            options: ['zh', 'en'],
+            default: 'zh'
+        }
+    },
+    
+    // 子规则链节点
+    subchain: {
+        chain_id: {
+            type: 'select',
+            label: '子规则链',
+            required: true,
+            remote: '/api/chains?root=false'
+        },
+        output_type: {
+            type: 'input',
+            label: '输出消息类型'
         }
     }
 };
 ```
 
-## 7. 开发计划
+## 9. 开发计划
 
 ### 第一阶段
 - [x] 基础框架搭建
@@ -194,7 +353,7 @@ const NODE_FORMS = {
 - [ ] 监控集成
 - [ ] 文档完善
 
-## 8. 部署架构
+## 10. 部署架构
 
 ```mermaid
 graph TD
@@ -205,7 +364,7 @@ graph TD
     D --> F[PostgreSQL]
 ```
 
-## 9. 安全考虑
+## 11. 安全考虑
 
 1. API 认证
 2. CSRF 防护
@@ -213,7 +372,7 @@ graph TD
 4. 用户权限控制
 5. 操作审计日志
 
-## 10. 本地开发
+## 12. 本地开发
 
 ```bash
 # 安装依赖
