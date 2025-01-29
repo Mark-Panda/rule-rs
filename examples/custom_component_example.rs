@@ -1,7 +1,7 @@
 use async_trait::async_trait;
-use rulego_rs::engine::NodeHandler;
-use rulego_rs::types::{CommonConfig, NodeContext, NodeDescriptor, NodeType, RuleError};
-use rulego_rs::{Message, RuleEngine};
+use rule_rs::engine::NodeHandler;
+use rule_rs::types::{CommonConfig, NodeContext, NodeDescriptor, NodeType, RuleError};
+use rule_rs::{Message, RuleEngine};
 use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;

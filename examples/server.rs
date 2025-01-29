@@ -7,7 +7,7 @@ use axum::{
     Router,
 };
 use hyper::Server;
-use rulego_rs::{
+use rule_rs::{
     types::{NodeDescriptor, RuleChain},
     Message, RuleEngine,
 };

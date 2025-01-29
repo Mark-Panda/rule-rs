@@ -1,115 +1,118 @@
-# RuleGo 规则引擎 Rust 实现
+# rule-rs
 
-一个基于 Rust 实现的轻量级规则引擎，支持灵活的规则链配置和丰富的内置组件。
+一个基于 Rust 实现的轻量级规则引擎,支持异步执行、组件扩展和规则链编排。
 
-## 功能特点
+## 主要特性
 
-- 支持异步执行
-- 内置多种组件
-- 支持子规则链
-- 支持循环依赖检测
-- 支持版本管理
+- 异步执行引擎
+- 丰富的内置组件
+- 支持自定义组件扩展
+- 支持子规则链嵌套
 - 支持 AOP 拦截器
+- 支持规则链热加载
+- 支持 REST API 服务
 
 ## 内置组件
 
-| 组件类型 | 说明 | 配置示例 |
+| 组件类型 | 说明 | 示例配置 |
 |---------|------|---------|
-| log | 日志记录 | `{"template": "日志内容"}` |
-| script | JavaScript脚本 | `{"script": "return msg;"}` |
+| log | 日志输出 | `{"template": "${msg.data}"}` |
+| script | JS脚本 | `{"script": "return msg.data;"}` |
+| filter | 消息过滤 | `{"condition": "value > 10"}` |
 | transform | 数据转换 | `{"template": {"key": "${msg.value}"}}` |
-| transform_js | JS数据转换 | `{"script": "return msg;"}` |
-| filter | 消息过滤 | `{"condition": "value < 10"}` |
+| transform_js | JS转换 | `{"script": "return {...msg};"}` |
 | delay | 延时处理 | `{"delay_ms": 1000}` |
-| switch | 条件分支 | `{"cases": [], "default": null}` |
-| rest_client | REST调用 | `{"url": "http://api.example.com"}` |
-| weather | 天气服务 | `{"api_key": "xxx", "city": "Shanghai"}` |
-| subchain | 子规则链 | `{"chain_id": "xxx"}` |
+| schedule | 定时任务 | `{"cron": "*/5 * * * * *"}` |
+| rest_client | HTTP请求 | `{"url": "http://api.example.com"}` |
+| weather | 天气服务 | `{"city": "Shanghai"}` |
+| subchain | 子规则链 | `{"chain_id": "..."}` |
 
-## 使用示例
+## 快速开始
 
-### 1. 基础规则链
+### 1. 添加依赖
 
-```rust
-// 创建规则引擎实例
-let engine = RuleEngine::new().await;
-
-// 加载规则链
-let chain_json = r#"{
-    "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
-    "name": "示例规则链",
-    "root": true,
-    "nodes": [
-        {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
-            "type_name": "script",
-            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
-            "config": {
-                "script": "return { value: msg.data.value + 1 };"
-            }
-        }
-    ]
-}"#;
-
-engine.load_chain(chain_json).await?;
-
-// 处理消息
-let msg = Message::new("test", json!({ "value": 1 }));
-let result = engine.process_msg(msg).await?;
+```toml
+[dependencies]
+rule-rs = "0.1.0"
 ```
 
-### 2. 天气服务示例
+### 2. 创建规则链
 
 ```rust
-let chain_json = r#"{
-    "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
-    "name": "天气查询系统",
-    "root": true,
-    "nodes": [
-        {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
-            "type_name": "weather",
-            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
-            "config": {
-                "api_key": "your_api_key",
-                "city": "Shanghai"
+use rule_rs::{Message, RuleEngine};
+
+#[tokio::main]
+async fn main() {
+    // 创建引擎实例
+    let engine = RuleEngine::new().await;
+    
+    // 加载规则链
+    engine.load_chain(r#"{
+        "id": "...",
+        "name": "示例规则链",
+        "root": true,
+        "nodes": [
+            {
+                "id": "...", 
+                "type_name": "log",
+                "config": {
+                    "template": "收到消息: ${msg.data}"
+                }
             }
-        }
-    ]
-}"#;
+        ]
+    }"#).await?;
+
+    // 处理消息
+    let msg = Message::new("test", json!({"value": 100}));
+    engine.process_msg(msg).await?;
+}
 ```
 
-## 高级特性
+### 3. 自定义组件
 
-### 循环依赖检测
+```rust
+use async_trait::async_trait;
+use rule_rs::engine::NodeHandler;
 
-系统会自动检测规则链之间的循环依赖，包括:
-- 节点间循环依赖
-- 子规则链循环依赖
+pub struct CustomNode {
+    config: CustomConfig,
+}
 
-### 版本管理
+#[async_trait]
+impl NodeHandler for CustomNode {
+    async fn handle(&self, ctx: NodeContext<'_>, msg: Message) -> Result<Message, RuleError> {
+        // 处理消息
+        Ok(msg)
+    }
+}
 
-- 支持规则链版本控制
-- 记录更新时间戳
-- 支持版本回滚(计划中)
+// 注册组件
+engine.register_node_type("custom/type", Arc::new(|config| {
+    Ok(Arc::new(CustomNode::new(config)) as Arc<dyn NodeHandler>)
+})).await;
+```
 
-### 拦截器系统
+## 示例代码
 
-支持两种拦截器:
-- 消息拦截器(MessageInterceptor)
-- 节点拦截器(NodeInterceptor)
+项目包含多个完整的示例:
 
-## 开发计划
+- examples/simple_rule.rs - 基础规则链示例
+- examples/custom_component.rs - 自定义组件示例  
+- examples/filter_example.rs - 过滤器示例
+- examples/transform_example.rs - 数据转换示例
+- examples/delay_example.rs - 延时处理示例
+- examples/schedule_example.rs - 定时任务示例
+- examples/rest_client.rs - HTTP请求示例
+- examples/weather_service.rs - 天气服务示例
 
-- [ ] 规则链热更新
-- [ ] 配置持久化
-- [ ] 监控指标
-- [ ] 可视化编辑器
+## 文档
 
-## 贡献指南
+更多详细文档请参考:
 
-欢迎提交 Issue 和 Pull Request。
+- [架构设计](docs/architecture.md)
+- [组件开发指南](docs/component.md) 
+- [API文档](docs/api.md)
 
-## 许可证
+## License
 
 MIT License

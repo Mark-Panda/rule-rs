@@ -1,4 +1,4 @@
-use rulego_rs::{Message, RuleEngine};
+use rule_rs::{Message, RuleEngine};
 use serde_json::json;
 use tracing::{error, info, Level};
 

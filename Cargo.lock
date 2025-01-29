@@ -2173,7 +2173,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rulego-rs"
+name = "rule-rs"
 version = "0.1.0"
 dependencies = [
  "anyhow",

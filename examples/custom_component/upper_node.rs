@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use rulego_rs::engine::NodeHandler;
-use rulego_rs::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
+use rule_rs::engine::NodeHandler;
+use rule_rs::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]

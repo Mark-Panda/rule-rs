@@ -1,4 +1,4 @@
-use rulego_rs::RuleEngine;
+use rule_rs::RuleEngine;
 use tracing::{info, Level};
 
 const MAIN_CHAIN: &str = r#"{
