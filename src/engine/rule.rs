@@ -1,4 +1,4 @@
-use crate::aop::{InterceptorManager, MessageInterceptor, NodeInterceptor};
+use crate::aop::{InterceptorManager, LoggingInterceptor, MessageInterceptor, NodeInterceptor};
 use crate::components::{
     DelayConfig, DelayNode, FilterConfig, FilterNode, JsFunctionConfig, JsFunctionNode, LogConfig,
     LogNode, RedisConfig, RedisNode, RedisOperation, RestClientConfig, RestClientNode,
@@ -268,12 +268,21 @@ impl RuleEngine {
             registry.register(type_name, factory).await;
         }
 
-        Self {
+        let engine = Self {
             chains: Arc::new(RwLock::new(HashMap::new())),
             node_registry,
             version_manager: Arc::new(VersionManager::new()),
             interceptor_manager: Arc::new(RwLock::new(InterceptorManager::new())),
-        }
+        };
+
+        // 注册日志拦截器
+        engine
+            .interceptor_manager
+            .write()
+            .await
+            .register_node_interceptor(Arc::new(LoggingInterceptor));
+
+        engine
     }
 
     async fn check_circular_dependency(&self, chain: &RuleChain) -> Result<(), RuleError> {
@@ -431,14 +440,14 @@ impl RuleEngine {
         self.interceptor_manager
             .write()
             .await
-            .add_node_interceptor(interceptor);
+            .register_node_interceptor(interceptor);
     }
 
     pub async fn add_msg_interceptor(&self, interceptor: Arc<dyn MessageInterceptor>) {
         self.interceptor_manager
             .write()
             .await
-            .add_msg_interceptor(interceptor);
+            .register_msg_interceptor(interceptor);
     }
 
     pub async fn process_msg(&self, msg: Message) -> Result<Message, RuleError> {
