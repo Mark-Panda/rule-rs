@@ -47,6 +47,10 @@ impl<'a> NodeContext<'a> {
 
         Ok(())
     }
+
+    pub fn set_next_branch(&mut self, branch: &str) {
+        self.metadata.insert("branch_name".to_string(), branch.to_string());
+    }
 }
 
 pub struct ExecutionContext {

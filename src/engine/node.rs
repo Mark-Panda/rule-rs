@@ -82,11 +82,29 @@ impl NodeRegistry {
         type_name: &str,
         config: serde_json::Value,
     ) -> Option<Arc<dyn NodeHandler>> {
-        if let Some(factory) = self.factories.read().await.get(type_name) {
-            factory(config).ok()
+        let factories = self.factories.read().await;
+        if let Some(factory) = factories.get(type_name) {
+            match factory(config) {
+                Ok(handler) => Some(handler),
+                Err(e) => {
+                    tracing::error!("Failed to create handler for {}: {}", type_name, e);
+                    None
+                }
+            }
         } else {
+            tracing::error!("No factory found for node type: {}", type_name);
             None
         }
+    }
+
+    pub async fn get_factory(&self, type_name: &str) -> Option<NodeFactory> {
+        let factories = self.factories.read().await;
+        factories.get(type_name).cloned()
+    }
+
+    pub async fn get_registered_types(&self) -> Vec<String> {
+        let factories = self.factories.read().await;
+        factories.keys().cloned().collect()
     }
 }
 

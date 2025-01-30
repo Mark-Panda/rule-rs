@@ -12,6 +12,9 @@ pub enum RuleError {
     #[error("节点执行失败: {0}")]
     NodeExecutionError(String),
 
+    #[error("组件错误: {0}")]
+    ComponentError(String),
+
     #[error("消息被过滤")]
     FilterReject,
 

@@ -1,9 +1,10 @@
 use crate::aop::{InterceptorManager, MessageInterceptor, NodeInterceptor};
 use crate::components::{
     DelayConfig, DelayNode, FilterConfig, FilterNode, JsFunctionConfig, JsFunctionNode, LogConfig,
-    LogNode, RestClientConfig, RestClientNode, ScheduleConfig, ScheduleNode, ScriptConfig,
-    ScriptNode, SubchainConfig, SubchainNode, SwitchConfig, SwitchNode, TransformConfig,
-    TransformJsConfig, TransformJsNode, TransformNode, WeatherConfig, WeatherNode,
+    LogNode, RedisConfig, RedisNode, RedisOperation, RestClientConfig, RestClientNode,
+    ScheduleConfig, ScheduleNode, ScriptConfig, ScriptNode, SubchainConfig, SubchainNode,
+    SwitchConfig, SwitchNode, TransformConfig, TransformJsConfig, TransformJsNode, TransformNode,
+    WeatherConfig, WeatherNode,
 };
 use crate::engine::{NodeFactory, NodeHandler, NodeRegistry, VersionManager};
 use crate::types::{
@@ -33,6 +34,36 @@ impl RuleEngine {
 
         // 注册内置组件
         let factories: Vec<(&str, NodeFactory)> = vec![
+            (
+                "redis",
+                Arc::new(|config| {
+                    if config.is_object() && config.as_object().unwrap().is_empty() {
+                        Ok(Arc::new(RedisNode::new(RedisConfig {
+                            url: "redis://localhost:6379".to_string(),
+                            operation: RedisOperation::Raw {
+                                command: "PING".to_string(),
+                                args: vec![],
+                            },
+                            key: String::new(),
+                            field: None,
+                            value: None,
+                            values: None,
+                            score: None,
+                            ttl: None,
+                            start: None,
+                            stop: None,
+                            success_branch: None,
+                            error_branch: None,
+                            common: CommonConfig {
+                                node_type: NodeType::Middle,
+                            },
+                        })) as Arc<dyn NodeHandler>)
+                    } else {
+                        let config: RedisConfig = serde_json::from_value(config)?;
+                        Ok(Arc::new(RedisNode::new(config)) as Arc<dyn NodeHandler>)
+                    }
+                }),
+            ),
             (
                 "log",
                 Arc::new(|config| {
