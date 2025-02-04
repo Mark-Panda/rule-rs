@@ -1,8 +1,6 @@
 use super::*;
 use crate::engine::DynRuleEngine;
 use std::collections::HashMap;
-use std::fmt;
-use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct NodeContext<'a> {
