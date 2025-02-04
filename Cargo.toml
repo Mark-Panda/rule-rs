@@ -17,7 +17,7 @@ tokio = { version = "1.0", features = ["full"] }
 # 通用工具
 uuid = { version = "1.12.1", features = ["serde", "v4"] }
 chrono = { version = "0.4", features = ["serde"] }
-async-trait = "0.1"
+async-trait = "0.1.86"
 
 # 错误处理
 thiserror = "2.0.11"

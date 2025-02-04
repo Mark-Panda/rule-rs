@@ -1,4 +1,4 @@
-use rule_rs::{Message, RuleEngine};
+use rule_rs::{engine::rule::RuleEngineTrait, Message, RuleEngine};
 use serde_json::json;
 use tracing::{error, info, Level};
 

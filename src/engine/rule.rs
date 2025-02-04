@@ -11,13 +11,44 @@ use crate::types::{
     CommonConfig, ExecutionContext, Message, Node, NodeContext, NodeDescriptor, NodeType,
     RuleChain, RuleError,
 };
+use async_trait::async_trait;
 use serde_json::json;
 use std::collections::{HashMap, HashSet};
+use std::fmt::Debug;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
+
+pub type DynRuleEngine = Arc<dyn RuleEngineTrait + Send + Sync>;
+
+#[async_trait]
+pub trait RuleEngineTrait: Debug + Send + Sync {
+    // async fn check_circular_dependency(&self, chain: &RuleChain) -> Result<(), RuleError>;
+    async fn load_chain(&self, content: &str) -> Result<Uuid, RuleError>;
+    async fn load_chain_from_file(&self, path: &str) -> Result<(), RuleError>;
+    async fn add_node_interceptor(&self, interceptor: Arc<dyn NodeInterceptor>);
+    async fn add_msg_interceptor(&self, interceptor: Arc<dyn MessageInterceptor>);
+    async fn process_msg(&self, msg: Message) -> Result<Message, RuleError>;
+    async fn execute_chain(
+        &self,
+        chain: &RuleChain,
+        ctx: &mut ExecutionContext,
+    ) -> Result<Message, RuleError>;
+    async fn execute_node<'a>(
+        &self,
+        node: &'a Node,
+        ctx: &NodeContext<'a>,
+        msg: Message,
+    ) -> Result<Message, RuleError>;
+    async fn get_current_version(&self) -> u64;
+    async fn get_registered_components(&self) -> Vec<NodeDescriptor>;
+    async fn get_loaded_chains(&self) -> Vec<Arc<RuleChain>>;
+    async fn get_chain(&self, id: Uuid) -> Option<Arc<RuleChain>>;
+    async fn remove_chain(&self, id: Uuid) -> Result<(), RuleError>;
+    async fn register_node_type(&self, type_name: &str, factory: NodeFactory);
+}
 
 #[derive(Debug, Clone)]
 pub struct RuleEngine {
@@ -284,134 +315,137 @@ impl RuleEngine {
 
         engine
     }
+}
 
-    async fn check_circular_dependency(&self, chain: &RuleChain) -> Result<(), RuleError> {
-        let mut visited = HashSet::new();
-        let mut stack = HashSet::new();
-        let mut chain_stack = HashSet::new();
+#[async_trait]
+impl RuleEngineTrait for RuleEngine {
+    // async fn check_circular_dependency(&self, chain: &RuleChain) -> Result<(), RuleError> {
+    //     let mut visited = HashSet::new();
+    //     let mut stack = HashSet::new();
+    //     let mut chain_stack = HashSet::new();
 
-        async fn check_subchain_node<'a>(
-            node: &'a Node,
-            chain_stack: &'a mut HashSet<Uuid>,
-            chain_id: Uuid,
-            chains: &'a HashMap<Uuid, Arc<RuleChain>>,
-        ) -> Pin<Box<dyn Future<Output = Result<(), RuleError>> + 'a>> {
-            Box::pin(async move {
-                if let "subchain" = node.type_name.as_str() {
-                    if let Ok(config) =
-                        serde_json::from_value::<SubchainConfig>(node.config.clone())
-                    {
-                        // 检查子规则链是否形成循环
-                        if chain_stack.contains(&config.chain_id) {
-                            let chain_names = chain_stack
-                                .iter()
-                                .map(|id| id.to_string())
-                                .collect::<Vec<_>>()
-                                .join(" -> ");
-                            return Err(RuleError::CircularDependency(format!(
-                                "检测到规则链循环依赖: {} -> {}",
-                                chain_names, config.chain_id
-                            )));
-                        }
-                        chain_stack.insert(chain_id);
+    //     async fn check_subchain_node<'a>(
+    //         node: &'a Node,
+    //         chain_stack: &'a mut HashSet<Uuid>,
+    //         chain_id: Uuid,
+    //         chains: &'a HashMap<Uuid, Arc<RuleChain>>,
+    //     ) -> Pin<Box<dyn Future<Output = Result<(), RuleError>> + 'a>> {
+    //         Box::pin(async move {
+    //             if let "subchain" = node.type_name.as_str() {
+    //                 if let Ok(config) =
+    //                     serde_json::from_value::<SubchainConfig>(node.config.clone())
+    //                 {
+    //                     // 检查子规则链是否形成循环
+    //                     if chain_stack.contains(&config.chain_id) {
+    //                         let chain_names = chain_stack
+    //                             .iter()
+    //                             .map(|id| id.to_string())
+    //                             .collect::<Vec<_>>()
+    //                             .join(" -> ");
+    //                         return Err(RuleError::CircularDependency(format!(
+    //                             "检测到规则链循环依赖: {} -> {}",
+    //                             chain_names, config.chain_id
+    //                         )));
+    //                     }
+    //                     chain_stack.insert(chain_id);
 
-                        // 递归检查已加载的子规则链
-                        if let Some(subchain) = chains.get(&config.chain_id) {
-                            for node in &subchain.nodes {
-                                check_subchain_node(node, chain_stack, subchain.id, chains)
-                                    .await
-                                    .await?;
-                            }
-                        }
-                    }
-                }
-                Ok(())
-            })
-        }
+    //                     // 递归检查已加载的子规则链
+    //                     if let Some(subchain) = chains.get(&config.chain_id) {
+    //                         for node in &subchain.nodes {
+    //                             check_subchain_node(node, chain_stack, subchain.id, chains)
+    //                                 .await
+    //                                 .await?;
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //             Ok(())
+    //         })
+    //     }
 
-        async fn dfs<'a>(
-            node_id: &'a Uuid,
-            chain: &'a RuleChain,
-            visited: &'a mut HashSet<Uuid>,
-            stack: &'a mut HashSet<Uuid>,
-            chain_stack: &'a mut HashSet<Uuid>,
-            chains: &'a HashMap<Uuid, Arc<RuleChain>>,
-        ) -> Pin<Box<dyn Future<Output = Result<(), RuleError>> + 'a>> {
-            Box::pin(async move {
-                if stack.contains(node_id) {
-                    let node_names: Vec<_> = stack
-                        .iter()
-                        .chain(std::iter::once(node_id))
-                        .filter_map(|id| {
-                            chain
-                                .nodes
-                                .iter()
-                                .find(|n| &n.id == id)
-                                .map(|n| n.type_name.clone())
-                        })
-                        .collect();
+    //     async fn dfs<'a>(
+    //         node_id: &'a Uuid,
+    //         chain: &'a RuleChain,
+    //         visited: &'a mut HashSet<Uuid>,
+    //         stack: &'a mut HashSet<Uuid>,
+    //         chain_stack: &'a mut HashSet<Uuid>,
+    //         chains: &'a HashMap<Uuid, Arc<RuleChain>>,
+    //     ) -> Pin<Box<dyn Future<Output = Result<(), RuleError>> + 'a>> {
+    //         Box::pin(async move {
+    //             if stack.contains(node_id) {
+    //                 let node_names: Vec<_> = stack
+    //                     .iter()
+    //                     .chain(std::iter::once(node_id))
+    //                     .filter_map(|id| {
+    //                         chain
+    //                             .nodes
+    //                             .iter()
+    //                             .find(|n| &n.id == id)
+    //                             .map(|n| n.type_name.clone())
+    //                     })
+    //                     .collect();
 
-                    return Err(RuleError::CircularDependency(format!(
-                        "检测到节点循环依赖: {}",
-                        node_names.join(" -> ")
-                    )));
-                }
+    //                 return Err(RuleError::CircularDependency(format!(
+    //                     "检测到节点循环依赖: {}",
+    //                     node_names.join(" -> ")
+    //                 )));
+    //             }
 
-                if visited.contains(node_id) {
-                    return Ok(());
-                }
+    //             if visited.contains(node_id) {
+    //                 return Ok(());
+    //             }
 
-                visited.insert(*node_id);
-                stack.insert(*node_id);
+    //             visited.insert(*node_id);
+    //             stack.insert(*node_id);
 
-                // 检查当前节点是否是子规则链节点
-                if let Some(node) = chain.nodes.iter().find(|n| &n.id == node_id) {
-                    check_subchain_node(node, chain_stack, chain.id, chains)
-                        .await
-                        .await?;
-                }
+    //             // 检查当前节点是否是子规则链节点
+    //             if let Some(node) = chain.nodes.iter().find(|n| &n.id == node_id) {
+    //                 check_subchain_node(node, chain_stack, chain.id, chains)
+    //                     .await
+    //                     .await?;
+    //             }
 
-                // 遍历所有后继节点
-                for conn in chain.connections.iter().filter(|c| &c.from_id == node_id) {
-                    dfs(&conn.to_id, chain, visited, stack, chain_stack, chains)
-                        .await
-                        .await?;
-                }
+    //             // 遍历所有后继节点
+    //             for conn in chain.connections.iter().filter(|c| &c.from_id == node_id) {
+    //                 dfs(&conn.to_id, chain, visited, stack, chain_stack, chains)
+    //                     .await
+    //                     .await?;
+    //             }
 
-                stack.remove(node_id);
-                Ok(())
-            })
-        }
+    //             stack.remove(node_id);
+    //             Ok(())
+    //         })
+    //     }
 
-        // 获取所有已加载的规则链
-        let chains = self.chains.read().await;
+    //     // 获取所有已加载的规则链
+    //     let chains = self.chains.read().await;
 
-        // 从每个节点开始检查
-        for node in &chain.nodes {
-            dfs(
-                &node.id,
-                chain,
-                &mut visited,
-                &mut stack,
-                &mut chain_stack,
-                &chains,
-            )
-            .await
-            .await?;
-        }
+    //     // 从每个节点开始检查
+    //     for node in &chain.nodes {
+    //         dfs(
+    //             &node.id,
+    //             chain,
+    //             &mut visited,
+    //             &mut stack,
+    //             &mut chain_stack,
+    //             &chains,
+    //         )
+    //         .await
+    //         .await?;
+    //     }
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
-    pub async fn load_chain(&self, content: &str) -> Result<Uuid, RuleError> {
+    async fn load_chain(&self, content: &str) -> Result<Uuid, RuleError> {
         let chain: RuleChain =
             serde_json::from_str(content).map_err(|e| RuleError::ConfigError(e.to_string()))?;
 
         // 验证节点类型限制
         chain.validate()?;
 
-        // 检查循环依赖
-        self.check_circular_dependency(&chain).await?;
+        // // 检查循环依赖
+        // self.check_circular_dependency(&chain).await?;
 
         // 创建新版本
         let version = self.version_manager.create_version(&chain);
@@ -427,7 +461,7 @@ impl RuleEngine {
         Ok(id)
     }
 
-    pub async fn load_chain_from_file(&self, path: &str) -> Result<(), RuleError> {
+    async fn load_chain_from_file(&self, path: &str) -> Result<(), RuleError> {
         let content = tokio::fs::read_to_string(path)
             .await
             .map_err(|e| RuleError::ConfigError(e.to_string()))?;
@@ -436,21 +470,21 @@ impl RuleEngine {
         Ok(())
     }
 
-    pub async fn add_node_interceptor(&self, interceptor: Arc<dyn NodeInterceptor>) {
+    async fn add_node_interceptor(&self, interceptor: Arc<dyn NodeInterceptor>) {
         self.interceptor_manager
             .write()
             .await
             .register_node_interceptor(interceptor);
     }
 
-    pub async fn add_msg_interceptor(&self, interceptor: Arc<dyn MessageInterceptor>) {
+    async fn add_msg_interceptor(&self, interceptor: Arc<dyn MessageInterceptor>) {
         self.interceptor_manager
             .write()
             .await
             .register_msg_interceptor(interceptor);
     }
 
-    pub async fn process_msg(&self, msg: Message) -> Result<Message, RuleError> {
+    async fn process_msg(&self, msg: Message) -> Result<Message, RuleError> {
         let manager = self.interceptor_manager.read().await;
 
         // 消息处理前拦截
@@ -476,7 +510,7 @@ impl RuleEngine {
         Ok(result)
     }
 
-    pub async fn execute_chain(
+    async fn execute_chain(
         &self,
         chain: &RuleChain,
         ctx: &mut ExecutionContext,
@@ -484,8 +518,10 @@ impl RuleEngine {
         let mut current_node = chain.get_start_node()?;
 
         while let Some(node) = current_node {
-            // 创建节点上下文
-            let node_ctx = NodeContext::new(node, ctx, Arc::new(self.clone()));
+            // 创建一个新的 Arc<Self>，然后将其转换为 trait object
+            let engine_trait_object =
+                Arc::new(self.clone()) as Arc<dyn RuleEngineTrait + Send + Sync>;
+            let node_ctx = NodeContext::new(node, ctx, engine_trait_object);
 
             // 执行节点逻辑
             ctx.msg = self.execute_node(node, &node_ctx, ctx.msg.clone()).await?;
@@ -497,7 +533,7 @@ impl RuleEngine {
         Ok(ctx.msg.clone())
     }
 
-    pub async fn execute_node<'a>(
+    async fn execute_node<'a>(
         &self,
         node: &'a Node,
         ctx: &NodeContext<'a>,
@@ -532,27 +568,27 @@ impl RuleEngine {
         result
     }
 
-    pub async fn get_current_version(&self) -> u64 {
+    async fn get_current_version(&self) -> u64 {
         self.version_manager.get_current_version()
     }
 
     /// 获取所有已注册的组件类型
-    pub async fn get_registered_components(&self) -> Vec<NodeDescriptor> {
+    async fn get_registered_components(&self) -> Vec<NodeDescriptor> {
         self.node_registry.get_descriptors().await
     }
 
     /// 获取所有已加载的规则链
-    pub async fn get_loaded_chains(&self) -> Vec<Arc<RuleChain>> {
+    async fn get_loaded_chains(&self) -> Vec<Arc<RuleChain>> {
         self.chains.read().await.values().cloned().collect()
     }
 
     /// 获取指定ID的规则链
-    pub async fn get_chain(&self, id: Uuid) -> Option<Arc<RuleChain>> {
+    async fn get_chain(&self, id: Uuid) -> Option<Arc<RuleChain>> {
         self.chains.read().await.get(&id).cloned()
     }
 
     /// 删除规则链
-    pub async fn remove_chain(&self, id: Uuid) -> Result<(), RuleError> {
+    async fn remove_chain(&self, id: Uuid) -> Result<(), RuleError> {
         let mut chains = self.chains.write().await;
 
         // 检查是否为根规则链
@@ -585,7 +621,7 @@ impl RuleEngine {
     }
 
     /// 注册自定义节点类型
-    pub async fn register_node_type(&self, type_name: &str, factory: NodeFactory) {
+    async fn register_node_type(&self, type_name: &str, factory: NodeFactory) {
         self.node_registry.register(type_name, factory).await;
     }
 }

@@ -1,18 +1,19 @@
 use super::*;
-use crate::engine::RuleEngine;
+use crate::engine::DynRuleEngine;
 use std::collections::HashMap;
+use std::fmt;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct NodeContext<'a> {
     pub node: &'a Node,
     pub metadata: HashMap<String, String>,
-    pub engine: Arc<RuleEngine>,
+    pub engine: DynRuleEngine,
     pub msg: Message,
 }
 
 impl<'a> NodeContext<'a> {
-    pub fn new(node: &'a Node, ctx: &ExecutionContext, engine: Arc<RuleEngine>) -> Self {
+    pub fn new(node: &'a Node, ctx: &ExecutionContext, engine: DynRuleEngine) -> Self {
         Self {
             node,
             metadata: ctx.metadata.clone(),
@@ -49,7 +50,8 @@ impl<'a> NodeContext<'a> {
     }
 
     pub fn set_next_branch(&mut self, branch: &str) {
-        self.metadata.insert("branch_name".to_string(), branch.to_string());
+        self.metadata
+            .insert("branch_name".to_string(), branch.to_string());
     }
 }
 

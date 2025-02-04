@@ -1,4 +1,4 @@
-use rule_rs::RuleEngine;
+use rule_rs::{engine::rule::RuleEngineTrait, RuleEngine};
 use tracing::{info, Level};
 
 const MAIN_CHAIN: &str = r#"{

@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use rule_rs::aop::{MessageInterceptor, NodeInterceptor};
-use rule_rs::{Message, NodeContext, RuleEngine, RuleError};
+use rule_rs::{engine::rule::RuleEngineTrait, Message, NodeContext, RuleEngine, RuleError};
 use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Arc;

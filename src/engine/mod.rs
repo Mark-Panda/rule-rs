@@ -3,5 +3,5 @@ pub mod rule;
 mod version;
 
 pub use node::*;
-pub use rule::RuleEngine;
+pub use rule::{DynRuleEngine, RuleEngine};
 pub use version::*;

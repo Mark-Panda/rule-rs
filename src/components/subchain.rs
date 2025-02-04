@@ -37,15 +37,18 @@ impl SubchainNode {
 #[async_trait]
 impl NodeHandler for SubchainNode {
     async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
-        // 获取子规则链
-        let chains = ctx.engine.chains.read().await;
-        let subchain = chains.get(&self.config.chain_id).ok_or_else(|| {
-            RuleError::ConfigError(format!("子规则链未找到: {}", self.config.chain_id))
-        })?;
+        // Use the new method to get the subchain
+        let subchain = ctx
+            .engine
+            .get_chain(self.config.chain_id)
+            .await
+            .ok_or_else(|| {
+                RuleError::ConfigError(format!("子规则链未找到: {}", self.config.chain_id))
+            })?;
 
         // 创建子规则链上下文
         let mut sub_ctx = ExecutionContext::new(msg);
-        ctx.engine.execute_chain(subchain, &mut sub_ctx).await
+        ctx.engine.execute_chain(&subchain, &mut sub_ctx).await
     }
 
     fn get_descriptor(&self) -> NodeDescriptor {

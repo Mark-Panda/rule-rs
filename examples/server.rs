@@ -1,19 +1,13 @@
 use axum::{
-    extract::{Path, State},
-    http::StatusCode,
+    extract::State,
     response::Json,
-    routing::{delete, get, post, put},
+    routing::{get, post},
     Router,
 };
-use rule_rs::{
-    types::{NodeDescriptor, RuleChain},
-    RuleEngine,
-};
+use rule_rs::{engine::rule::RuleEngineTrait, types::NodeDescriptor, RuleEngine};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::sync::Arc;
-use tower_http::trace::TraceLayer;
-use uuid::Uuid;
+use uuid::Uuid; // 引入 async_trait 宏
 
 // API 响应格式
 #[derive(Debug, Serialize)]
@@ -42,29 +36,40 @@ impl<T> ApiResponse<T> {
 }
 
 // 规则链请求体
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct RuleChainRequest {
+    id: Uuid,
     name: String,
     root: bool,
     nodes: Vec<NodeRequest>,
     connections: Vec<ConnectionRequest>,
+    metadata: Metadata,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
+struct Metadata {
+    version: u32,
+    created_at: u64,
+    updated_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 struct NodeRequest {
+    id: Uuid,
     type_name: String,
+    chain_id: Uuid,
     config: serde_json::Value,
     layout: Position,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct ConnectionRequest {
     from_id: Uuid,
     to_id: Uuid,
     type_name: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct Position {
     x: f32,
     y: f32,
@@ -89,7 +94,7 @@ async fn main() {
     // 创建路由
     let app = Router::new()
         .route("/api/components", get(list_components))
-        // .route("/api/chains", post(create_chain))
+        .route("/api/chains", post(create_chain))
         // .route("/api/chains/:id", get(get_chain))
         // .route("/api/chains/:id", put(update_chain))
         // .route("/api/chains/:id", delete(delete_chain))
@@ -110,35 +115,18 @@ async fn list_components(State(state): State<AppState>) -> Json<ApiResponse<Vec<
     Json(ApiResponse::success(components))
 }
 
-// // 创建规则链
-// #[debug_handler]
-// async fn create_chain(
-//     State(state): State<AppState>,
-//     Json(req): Json<RuleChainRequest>,
-// ) -> Result<Json<ApiResponse<Uuid>>, (StatusCode, Json<ApiResponse<()>>)> {
-//     // 构造规则链配置
-//     let chain = json!({
-//         "id": Uuid::new_v4(),
-//         "name": req.name,
-//         "root": req.root,
-//         "nodes": req.nodes,
-//         "connections": req.connections,
-//         "metadata": {
-//             "version": 1,
-//             "created_at": chrono::Utc::now().timestamp_millis(),
-//             "updated_at": chrono::Utc::now().timestamp_millis()
-//         }
-//     });
-
-//     // 加载规则链
-//     match state.engine.load_chain(&chain.to_string()).await {
-//         Ok(id) => Ok(Json(ApiResponse::success(id))),
-//         Err(e) => Err((
-//             StatusCode::BAD_REQUEST,
-//             Json(ApiResponse::error(400, &e.to_string())),
-//         )),
-//     }
-// }
+// 创建规则链
+async fn create_chain(
+    State(state): State<AppState>,
+    Json(req): Json<RuleChainRequest>,
+) -> Result<Json<ApiResponse<Uuid>>, Json<ApiResponse<()>>> {
+    let chain = serde_json::to_string(&req).unwrap();
+    println!("chain: {}", chain);
+    match state.engine.load_chain(&chain).await {
+        Ok(id) => Ok(Json(ApiResponse::success(id))),
+        Err(e) => Err(Json(ApiResponse::error(400, &e.to_string()))),
+    }
+}
 
 // // 获取规则链
 // #[debug_handler]
