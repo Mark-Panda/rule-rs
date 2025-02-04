@@ -25,7 +25,7 @@ pub type DynRuleEngine = Arc<dyn RuleEngineTrait + Send + Sync>;
 
 #[async_trait]
 pub trait RuleEngineTrait: Debug + Send + Sync {
-    // async fn check_circular_dependency(&self, chain: &RuleChain) -> Result<(), RuleError>;
+    async fn check_circular_dependency(&self, chain: &RuleChain) -> Result<(), RuleError>;
     async fn load_chain(&self, content: &str) -> Result<Uuid, RuleError>;
     async fn load_chain_from_file(&self, path: &str) -> Result<(), RuleError>;
     async fn add_node_interceptor(&self, interceptor: Arc<dyn NodeInterceptor>);
@@ -319,133 +319,162 @@ impl RuleEngine {
 
 #[async_trait]
 impl RuleEngineTrait for RuleEngine {
-    // async fn check_circular_dependency(&self, chain: &RuleChain) -> Result<(), RuleError> {
-    //     let mut visited = HashSet::new();
-    //     let mut stack = HashSet::new();
-    //     let mut chain_stack = HashSet::new();
+    async fn check_circular_dependency(&self, chain: &RuleChain) -> Result<(), RuleError> {
+        let chains = self.chains.read().await;
 
-    //     async fn check_subchain_node<'a>(
-    //         node: &'a Node,
-    //         chain_stack: &'a mut HashSet<Uuid>,
-    //         chain_id: Uuid,
-    //         chains: &'a HashMap<Uuid, Arc<RuleChain>>,
-    //     ) -> Pin<Box<dyn Future<Output = Result<(), RuleError>> + 'a>> {
-    //         Box::pin(async move {
-    //             if let "subchain" = node.type_name.as_str() {
-    //                 if let Ok(config) =
-    //                     serde_json::from_value::<SubchainConfig>(node.config.clone())
-    //                 {
-    //                     // 检查子规则链是否形成循环
-    //                     if chain_stack.contains(&config.chain_id) {
-    //                         let chain_names = chain_stack
-    //                             .iter()
-    //                             .map(|id| id.to_string())
-    //                             .collect::<Vec<_>>()
-    //                             .join(" -> ");
-    //                         return Err(RuleError::CircularDependency(format!(
-    //                             "检测到规则链循环依赖: {} -> {}",
-    //                             chain_names, config.chain_id
-    //                         )));
-    //                     }
-    //                     chain_stack.insert(chain_id);
+        // 全局节点访问记录（链ID + 节点ID）
+        let mut global_visited = HashSet::new();
+        // 当前节点调用栈（链ID + 节点ID）
+        let mut node_stack = Vec::new();
+        // 规则链调用栈
+        let mut chain_stack = Vec::new();
 
-    //                     // 递归检查已加载的子规则链
-    //                     if let Some(subchain) = chains.get(&config.chain_id) {
-    //                         for node in &subchain.nodes {
-    //                             check_subchain_node(node, chain_stack, subchain.id, chains)
-    //                                 .await
-    //                                 .await?;
-    //                         }
-    //                     }
-    //                 }
-    //             }
-    //             Ok(())
-    //         })
-    //     }
+        async fn check_dependencies<'a>(
+            chain: &'a Arc<RuleChain>,
+            node_id: &Uuid,
+            chains: &'a HashMap<Uuid, Arc<RuleChain>>,
+            global_visited: &mut HashSet<(Uuid, Uuid)>,
+            node_stack: &mut Vec<(Uuid, Uuid)>,
+            chain_stack: &mut Vec<Uuid>,
+        ) -> Result<(), RuleError> {
+            let node_key = (chain.id, *node_id);
 
-    //     async fn dfs<'a>(
-    //         node_id: &'a Uuid,
-    //         chain: &'a RuleChain,
-    //         visited: &'a mut HashSet<Uuid>,
-    //         stack: &'a mut HashSet<Uuid>,
-    //         chain_stack: &'a mut HashSet<Uuid>,
-    //         chains: &'a HashMap<Uuid, Arc<RuleChain>>,
-    //     ) -> Pin<Box<dyn Future<Output = Result<(), RuleError>> + 'a>> {
-    //         Box::pin(async move {
-    //             if stack.contains(node_id) {
-    //                 let node_names: Vec<_> = stack
-    //                     .iter()
-    //                     .chain(std::iter::once(node_id))
-    //                     .filter_map(|id| {
-    //                         chain
-    //                             .nodes
-    //                             .iter()
-    //                             .find(|n| &n.id == id)
-    //                             .map(|n| n.type_name.clone())
-    //                     })
-    //                     .collect();
+            // 检查节点级循环
+            if node_stack.contains(&node_key) {
+                let cycle_path: Vec<String> = node_stack
+                    .iter()
+                    .skip_while(|&x| x != &node_key)
+                    .chain(std::iter::once(&node_key))
+                    .map(|(c, n)| {
+                        let current_chain = chains.get(c).unwrap_or(chain);
+                        let node = current_chain
+                            .nodes
+                            .iter()
+                            .find(|nd| &nd.id == n)
+                            .map_or_else(
+                                || format!("未知节点({})", n),
+                                |nd| format!("{}[{}]", current_chain.name, nd.type_name),
+                            );
+                        node
+                    })
+                    .collect();
 
-    //                 return Err(RuleError::CircularDependency(format!(
-    //                     "检测到节点循环依赖: {}",
-    //                     node_names.join(" -> ")
-    //                 )));
-    //             }
+                return Err(RuleError::CircularDependency(format!(
+                    "节点循环依赖: {}",
+                    cycle_path.join(" -> ")
+                )));
+            }
 
-    //             if visited.contains(node_id) {
-    //                 return Ok(());
-    //             }
+            // 检查链级循环
+            if chain_stack.contains(&chain.id) {
+                let chain_cycle: Vec<String> = chain_stack
+                    .iter()
+                    .skip_while(|&x| x != &chain.id)
+                    .chain(std::iter::once(&chain.id))
+                    .map(|id| {
+                        chains
+                            .get(id)
+                            .map_or_else(|| format!("未加载链({})", id), |c| c.name.clone())
+                    })
+                    .collect();
 
-    //             visited.insert(*node_id);
-    //             stack.insert(*node_id);
+                return Err(RuleError::CircularDependency(format!(
+                    "规则链循环依赖: {}",
+                    chain_cycle.join(" -> ")
+                )));
+            }
 
-    //             // 检查当前节点是否是子规则链节点
-    //             if let Some(node) = chain.nodes.iter().find(|n| &n.id == node_id) {
-    //                 check_subchain_node(node, chain_stack, chain.id, chains)
-    //                     .await
-    //                     .await?;
-    //             }
+            // 已检查过该节点
+            if global_visited.contains(&node_key) {
+                return Ok(());
+            }
 
-    //             // 遍历所有后继节点
-    //             for conn in chain.connections.iter().filter(|c| &c.from_id == node_id) {
-    //                 dfs(&conn.to_id, chain, visited, stack, chain_stack, chains)
-    //                     .await
-    //                     .await?;
-    //             }
+            // 记录访问状态
+            global_visited.insert(node_key);
+            node_stack.push(node_key);
+            chain_stack.push(chain.id);
 
-    //             stack.remove(node_id);
-    //             Ok(())
-    //         })
-    //     }
+            // 处理当前节点
+            let node = chain
+                .nodes
+                .iter()
+                .find(|n| &n.id == node_id)
+                .ok_or_else(|| RuleError::ConfigError("节点不存在".to_string()))?;
 
-    //     // 获取所有已加载的规则链
-    //     let chains = self.chains.read().await;
+            // 处理子链节点
+            if node.type_name == "subchain" {
+                let config: SubchainConfig = serde_json::from_value(node.config.clone())
+                    .map_err(|e| RuleError::ConfigError(format!("子链配置解析失败: {}", e)))?;
 
-    //     // 从每个节点开始检查
-    //     for node in &chain.nodes {
-    //         dfs(
-    //             &node.id,
-    //             chain,
-    //             &mut visited,
-    //             &mut stack,
-    //             &mut chain_stack,
-    //             &chains,
-    //         )
-    //         .await
-    //         .await?;
-    //     }
+                if let Some(subchain) = chains.get(&config.chain_id) {
+                    // 获取子链的起始节点
+                    let start_node = subchain.get_start_node()?.ok_or_else(|| {
+                        RuleError::ConfigError(format!("子链 {} 没有起始节点", subchain.id))
+                    })?;
 
-    //     Ok(())
-    // }
+                    // 递归检查子链
+                    Box::pin(check_dependencies(
+                        subchain,
+                        &start_node.id,
+                        chains,
+                        global_visited,
+                        node_stack,
+                        chain_stack,
+                    ))
+                    .await?;
+                }
+            }
+
+            // 处理后续连接
+            for conn in chain.connections.iter().filter(|c| &c.from_id == node_id) {
+                Box::pin(check_dependencies(
+                    chain,
+                    &conn.to_id,
+                    chains,
+                    global_visited,
+                    node_stack,
+                    chain_stack,
+                ))
+                .await?;
+            }
+
+            // 回溯状态
+            node_stack.pop();
+            chain_stack.pop();
+
+            Ok(())
+        }
+
+        // 从起始节点开始检查
+        let start_node = chain
+            .get_start_node()?
+            .ok_or(RuleError::ConfigError("规则链没有起始节点".to_string()))?;
+
+        let current_chain = self
+            .get_chain(chain.id)
+            .await
+            .ok_or_else(|| RuleError::ConfigError(format!("规则链 {} 未正确加载", chain.id)))?;
+
+        Box::pin(check_dependencies(
+            &current_chain,
+            &start_node.id,
+            &chains,
+            &mut global_visited,
+            &mut node_stack,
+            &mut chain_stack,
+        ))
+        .await
+    }
 
     async fn load_chain(&self, content: &str) -> Result<Uuid, RuleError> {
         let chain: RuleChain =
             serde_json::from_str(content).map_err(|e| RuleError::ConfigError(e.to_string()))?;
 
-        // 验证节点类型限制
         chain.validate()?;
+        self.check_circular_dependency(&chain).await?;
 
-        // // 检查循环依赖
-        // self.check_circular_dependency(&chain).await?;
+        // 启用循环依赖检查
+        self.check_circular_dependency(&chain).await?;
 
         // 创建新版本
         let version = self.version_manager.create_version(&chain);
