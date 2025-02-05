@@ -201,6 +201,13 @@ async fn delete_chain(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<ApiResponse<()>>, (StatusCode, Json<ApiResponse<()>>)> {
+    // 检查规则链是否存在
+    if state.engine.get_chain(id).await.is_none() {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ApiResponse::error(404, "Rule chain not found")),
+        ));
+    }
     match state.engine.remove_chain(id).await {
         Ok(_) => Ok(Json(ApiResponse::success(()))),
         Err(e) => Err((
