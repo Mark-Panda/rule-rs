@@ -67,7 +67,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     let engine = RuleEngine::new().await;
-    engine.load_chain(RULE_CHAIN).await?;
+    let chain_id = engine.load_chain(RULE_CHAIN).await?;
 
     // 测试数据
     let test_values = vec![10, 20, 30, 40];
@@ -81,7 +81,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
 
         info!("测试输入值: {}", value);
-        match engine.process_msg(msg).await {
+        match engine.process_msg(chain_id, msg).await {
             Ok(_) => info!("计算完成"),
             Err(e) => info!("计算失败: {:?}", e),
         }

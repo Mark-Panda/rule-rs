@@ -85,12 +85,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let engine = RuleEngine::new().await;
 
     // 加载规则链
-    let chain_result = engine.load_chain(RULE_CHAIN).await;
-    match &chain_result {
-        Ok(_) => info!("规则链加载成功"),
-        Err(e) => info!("规则链加载失败: {:?}", e),
-    }
-    chain_result?;
+    let chain_id = engine.load_chain(RULE_CHAIN).await?;
 
     info!(
         "规则链加载成功, 版本: {}",
@@ -106,7 +101,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // 处理消息
-    match engine.process_msg(msg).await {
+    match engine.process_msg(chain_id, msg).await {
         Ok(result) => info!("处理结果: {:?}", result),
         Err(e) => info!("处理失败: {:?}", e),
     }

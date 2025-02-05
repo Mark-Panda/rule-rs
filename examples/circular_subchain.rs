@@ -103,7 +103,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 再加载主规则链
     info!("尝试加载主规则链...");
     match engine.load_chain(MAIN_CHAIN).await {
-        Ok(_) => {
+        Ok(chain_id) => {
             info!("主规则链加载成功");
 
             // 尝试执行规则链
@@ -115,7 +115,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }),
             );
 
-            match engine.process_msg(msg).await {
+            match engine.process_msg(chain_id, msg).await {
                 Ok(result) => info!("执行结果: {:?}", result),
                 Err(e) => info!("执行失败(预期行为): {}", e),
             }

@@ -87,7 +87,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     let engine = RuleEngine::new().await;
-    engine.load_chain(RULE_CHAIN).await?;
+    let chain_id = engine.load_chain(RULE_CHAIN).await?;
 
     // 测试高温场景
     let high_temp_msg = Message::new(
@@ -98,7 +98,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     info!("测试高温场景 - 35°C");
-    match engine.process_msg(high_temp_msg).await {
+    match engine.process_msg(chain_id, high_temp_msg).await {
         Ok(_) => info!("高温场景处理完成"),
         Err(e) => info!("高温场景处理失败: {:?}", e),
     }
@@ -112,7 +112,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     info!("测试低温场景 - 5°C");
-    match engine.process_msg(low_temp_msg).await {
+    match engine.process_msg(chain_id, low_temp_msg).await {
         Ok(_) => info!("低温场景处理完成"),
         Err(e) => info!("低温场景处理失败: {:?}", e),
     }
@@ -126,7 +126,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     info!("测试正常温度场景 - 25°C");
-    match engine.process_msg(normal_temp_msg).await {
+    match engine.process_msg(chain_id, normal_temp_msg).await {
         Ok(_) => info!("正常温度场景处理完成"),
         Err(e) => info!("正常温度场景处理失败: {:?}", e),
     }

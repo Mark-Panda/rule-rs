@@ -16,7 +16,7 @@ use serde_json::json;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 use uuid::Uuid;
 
 pub type DynRuleEngine = Arc<dyn RuleEngineTrait + Send + Sync>;
@@ -29,7 +29,7 @@ pub trait RuleEngineTrait: Debug + Send + Sync {
     async fn load_chain_from_file(&self, path: &str) -> Result<(), RuleError>;
     async fn add_node_interceptor(&self, interceptor: Arc<dyn NodeInterceptor>);
     async fn add_msg_interceptor(&self, interceptor: Arc<dyn MessageInterceptor>);
-    async fn process_msg(&self, msg: Message) -> Result<Message, RuleError>;
+    async fn process_msg(&self, chain_id: Uuid, msg: Message) -> Result<Message, RuleError>;
     async fn execute_chain(
         &self,
         chain: &RuleChain,
@@ -55,6 +55,7 @@ pub struct RuleEngine {
     node_registry: Arc<NodeRegistry>,
     version_manager: Arc<VersionManager>,
     interceptor_manager: Arc<RwLock<InterceptorManager>>,
+    execution_counters: Arc<RwLock<HashMap<Uuid, Arc<Mutex<usize>>>>>,
 }
 
 impl RuleEngine {
@@ -303,6 +304,7 @@ impl RuleEngine {
             node_registry,
             version_manager: Arc::new(VersionManager::new()),
             interceptor_manager: Arc::new(RwLock::new(InterceptorManager::new())),
+            execution_counters: Arc::new(RwLock::new(HashMap::new())),
         };
 
         // 注册日志拦截器
@@ -617,7 +619,7 @@ impl RuleEngineTrait for RuleEngine {
             .register_msg_interceptor(interceptor);
     }
 
-    async fn process_msg(&self, msg: Message) -> Result<Message, RuleError> {
+    async fn process_msg(&self, chain_id: Uuid, msg: Message) -> Result<Message, RuleError> {
         let manager = self.interceptor_manager.read().await;
 
         // 消息处理前拦截
@@ -625,17 +627,24 @@ impl RuleEngineTrait for RuleEngine {
 
         let chains = self.chains.read().await;
 
-        // 查找根规则链
-        let root_chain = chains
-            .values()
-            .find(|c| c.root)
-            .ok_or(RuleError::NoRootChain)?;
+        // 查找指定的规则链
+        let chain = chains
+            .get(&chain_id)
+            .ok_or(RuleError::ChainNotFound(chain_id))?;
+
+        // 检查是否为根规则链
+        if !chain.root {
+            return Err(RuleError::ConfigError(format!(
+                "Chain {} is not a root chain",
+                chain_id
+            )));
+        }
 
         // 创建执行上下文
         let mut ctx = ExecutionContext::new(msg.clone());
 
         // 执行规则链
-        let result = self.execute_chain(root_chain, &mut ctx).await?;
+        let result = self.execute_chain(chain, &mut ctx).await?;
 
         // 消息处理后拦截
         manager.after_process(&msg).await?;
@@ -648,22 +657,46 @@ impl RuleEngineTrait for RuleEngine {
         chain: &RuleChain,
         ctx: &mut ExecutionContext,
     ) -> Result<Message, RuleError> {
-        let mut current_node = chain.get_start_node()?;
+        // 获取或创建计数器
+        let counter = {
+            let mut counters = self.execution_counters.write().await;
+            counters
+                .entry(chain.id)
+                .or_insert_with(|| Arc::new(Mutex::new(0)))
+                .clone()
+        };
 
-        while let Some(node) = current_node {
-            // 创建一个新的 Arc<Self>，然后将其转换为 trait object
-            let engine_trait_object =
-                Arc::new(self.clone()) as Arc<dyn RuleEngineTrait + Send + Sync>;
-            let node_ctx = NodeContext::new(node, ctx, engine_trait_object);
-
-            // 执行节点逻辑
-            ctx.msg = self.execute_node(node, &node_ctx, ctx.msg.clone()).await?;
-
-            // 获取下一个节点
-            current_node = chain.get_next_node(&node.id, ctx)?;
+        // 增加计数
+        {
+            let mut count = counter.lock().await;
+            *count += 1;
         }
 
-        Ok(ctx.msg.clone())
+        let result = async {
+            let mut current_node = chain.get_start_node()?;
+            while let Some(node) = current_node {
+                let engine_trait_object =
+                    Arc::new(self.clone()) as Arc<dyn RuleEngineTrait + Send + Sync>;
+                let node_ctx = NodeContext::new(node, ctx, engine_trait_object);
+                ctx.msg = self.execute_node(node, &node_ctx, ctx.msg.clone()).await?;
+                current_node = chain.get_next_node(&node.id, ctx)?;
+            }
+            Ok(ctx.msg.clone())
+        }
+        .await;
+
+        // 减少计数
+        {
+            let mut count = counter.lock().await;
+            *count = count.saturating_sub(1);
+            // 如果计数为0,从map中移除
+            if *count == 0 {
+                let mut counters = self.execution_counters.write().await;
+                counters.remove(&chain.id);
+            }
+        }
+
+        result
     }
 
     async fn execute_node<'a>(
@@ -722,24 +755,42 @@ impl RuleEngineTrait for RuleEngine {
 
     /// 删除规则链
     async fn remove_chain(&self, id: Uuid) -> Result<(), RuleError> {
-        let mut chains = self.chains.write().await;
+        // 获取计数器并检查
+        let counter = {
+            let counters = self.execution_counters.read().await;
+            counters.get(&id).cloned()
+        };
 
-        // 检查是否为根规则链
-        if let Some(chain) = chains.get(&id) {
-            if chain.root {
-                return Err(RuleError::ConfigError(
-                    "Cannot delete root chain".to_string(),
-                ));
+        if let Some(counter) = &counter {
+            let count = *counter.lock().await;
+            if count > 0 {
+                return Err(RuleError::ConfigError(format!(
+                    "无法删除正在执行的规则链 {}, 当前有 {} 个执行实例",
+                    id, count
+                )));
             }
         }
 
-        // 检查是否被其他规则链引用
+        let mut chains = self.chains.write().await;
+
+        // 再次检查计数,确保删除时没有新的执行
+        if let Some(counter) = &counter {
+            let count = *counter.lock().await;
+            if count > 0 {
+                return Err(RuleError::ConfigError(format!(
+                    "无法删除正在执行的规则链 {}, 当前有 {} 个执行实例",
+                    id, count
+                )));
+            }
+        }
+
+        // 检查引用关系
         for chain in chains.values() {
             for node in &chain.nodes {
                 if let Ok(config) = serde_json::from_value::<SubchainConfig>(node.config.clone()) {
                     if config.chain_id == id {
                         return Err(RuleError::ConfigError(format!(
-                            "Chain {} is referenced by chain {}",
+                            "规则链 {} 被规则链 {} 引用,无法删除",
                             id, chain.id
                         )));
                     }

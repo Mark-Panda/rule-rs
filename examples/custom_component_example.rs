@@ -119,11 +119,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         info!("- {}: {}", desc.type_name, desc.description);
     }
 
-    engine.load_chain(RULE_CHAIN).await?;
+    let chain_id = engine.load_chain(RULE_CHAIN).await?;
 
     let msg = Message::new("test", json!("hello world"));
 
-    match engine.process_msg(msg).await {
+    match engine.process_msg(chain_id, msg).await {
         Ok(_) => info!("处理成功"),
         Err(e) => info!("处理失败: {:?}", e),
     }
