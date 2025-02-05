@@ -3,3 +3,5 @@ volumes
 logs
 .env
 *.DS_Store
+.cursorrules
+.cursorignore
