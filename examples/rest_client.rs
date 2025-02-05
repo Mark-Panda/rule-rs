@@ -152,7 +152,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 处理消息
     match engine.process_msg(chain_id, msg).await {
-        Ok(result) => info!("处理结果: {:?}", result),
+        Ok(result) => {
+            info!("处理结果: {:?}", result);
+            engine.remove_chain(chain_id).await?;
+        }
         Err(e) => info!("处理失败: {:?}", e),
     }
 
