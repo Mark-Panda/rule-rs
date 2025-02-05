@@ -364,13 +364,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 加载并执行正常规则链
     let msg = Message::new("test", json!({"value": 1}));
-    engine.load_chain(CHAIN_A).await?;
-    engine.process_msg(msg).await?;
+    let chain_id = engine.load_chain(CHAIN_A).await?;
+    engine.process_msg(chain_id, msg).await?;
 
     // 加载并执行错误规则链
     let msg = Message::new("test", json!({"value": 1}));
-    engine.load_chain(ERROR_CHAIN).await?;
-    let _ = engine.process_msg(msg).await; // 忽略错误结果
+    let chain_id1 = engine.load_chain(ERROR_CHAIN).await?;
+    let _ = engine.process_msg(chain_id1, msg).await; // 忽略错误结果
 
     // 打印统计信息
     stats_interceptor.print_stats();

@@ -51,7 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     let engine = RuleEngine::new().await;
-    engine.load_chain(RULE_CHAIN).await?;
+    let chain_id = engine.load_chain(RULE_CHAIN).await?;
 
     // 测试 BMI 计算
     let test_cases = vec![
@@ -71,7 +71,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
 
         info!("测试身高{}cm, 体重{}kg的BMI", height, weight);
-        match engine.process_msg(msg).await {
+        match engine.process_msg(chain_id, msg).await {
             Ok(_) => info!("BMI计算完成"),
             Err(e) => info!("计算失败: {:?}", e),
         }

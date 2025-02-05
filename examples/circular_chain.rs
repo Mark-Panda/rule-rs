@@ -76,7 +76,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 尝试加载循环依赖的规则链
     info!("尝试加载循环依赖的规则链...");
     match engine.load_chain(CIRCULAR_CHAIN).await {
-        Ok(_) => {
+        Ok(chain_id) => {
             error!("错误: 成功加载了循环依赖的规则链!");
 
             // 如果加载成功，尝试执行看是否会死循环
@@ -88,7 +88,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }),
             );
 
-            match engine.process_msg(msg).await {
+            match engine.process_msg(chain_id, msg).await {
                 Ok(result) => info!("执行结果: {:?}", result),
                 Err(e) => info!("执行失败(预期行为): {}", e),
             }

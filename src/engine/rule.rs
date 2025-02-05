@@ -29,7 +29,7 @@ pub trait RuleEngineTrait: Debug + Send + Sync {
     async fn load_chain_from_file(&self, path: &str) -> Result<(), RuleError>;
     async fn add_node_interceptor(&self, interceptor: Arc<dyn NodeInterceptor>);
     async fn add_msg_interceptor(&self, interceptor: Arc<dyn MessageInterceptor>);
-    async fn process_msg(&self, msg: Message) -> Result<Message, RuleError>;
+    async fn process_msg(&self, chain_id: Uuid, msg: Message) -> Result<Message, RuleError>;
     async fn execute_chain(
         &self,
         chain: &RuleChain,
@@ -617,7 +617,7 @@ impl RuleEngineTrait for RuleEngine {
             .register_msg_interceptor(interceptor);
     }
 
-    async fn process_msg(&self, msg: Message) -> Result<Message, RuleError> {
+    async fn process_msg(&self, chain_id: Uuid, msg: Message) -> Result<Message, RuleError> {
         let manager = self.interceptor_manager.read().await;
 
         // 消息处理前拦截
@@ -625,17 +625,24 @@ impl RuleEngineTrait for RuleEngine {
 
         let chains = self.chains.read().await;
 
-        // 查找根规则链
-        let root_chain = chains
-            .values()
-            .find(|c| c.root)
-            .ok_or(RuleError::NoRootChain)?;
+        // 查找指定的规则链
+        let chain = chains
+            .get(&chain_id)
+            .ok_or(RuleError::ChainNotFound(chain_id))?;
+
+        // 检查是否为根规则链
+        if !chain.root {
+            return Err(RuleError::ConfigError(format!(
+                "Chain {} is not a root chain",
+                chain_id
+            )));
+        }
 
         // 创建执行上下文
         let mut ctx = ExecutionContext::new(msg.clone());
 
         // 执行规则链
-        let result = self.execute_chain(root_chain, &mut ctx).await?;
+        let result = self.execute_chain(chain, &mut ctx).await?;
 
         // 消息处理后拦截
         manager.after_process(&msg).await?;

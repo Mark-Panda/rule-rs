@@ -191,7 +191,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     info!("开始处理消息: {:?}", msg);
-    let result = engine.process_msg(msg).await?;
+    let result = engine.process_msg(chain_id, msg).await?;
     info!("处理结果: {:?}", result);
 
     Ok(())

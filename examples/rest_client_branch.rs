@@ -72,7 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let engine = RuleEngine::new().await;
 
     // 加载规则链
-    engine.load_chain(RULE_CHAIN).await?;
+    let chain_id = engine.load_chain(RULE_CHAIN).await?;
 
     // 成功场景 - 有效的城市名
     let success_msg = Message::new(
@@ -83,7 +83,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     info!("测试成功场景 - 查询上海天气");
-    match engine.process_msg(success_msg).await {
+    match engine.process_msg(chain_id, success_msg).await {
         Ok(_) => info!("成功场景处理完成"),
         Err(e) => info!("成功场景处理失败: {:?}", e),
     }
@@ -97,7 +97,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     info!("测试失败场景 - 查询不存在的城市");
-    match engine.process_msg(error_msg).await {
+    match engine.process_msg(chain_id, error_msg).await {
         Ok(_) => info!("失败场景处理完成"),
         Err(e) => info!("失败场景处理失败: {:?}", e),
     }

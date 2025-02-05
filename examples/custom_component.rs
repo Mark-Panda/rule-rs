@@ -51,11 +51,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }"#;
 
-    engine.load_chain(chain_json).await?;
+    let chain_id = engine.load_chain(chain_json).await?;
 
     // 处理消息
     let msg = Message::new("test", json!({ "value": 1 }));
-    engine.process_msg(msg).await?;
+    engine.process_msg(chain_id, msg).await?;
 
     Ok(())
 }

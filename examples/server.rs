@@ -9,6 +9,7 @@ use axum::{
 };
 use rule_rs::{
     engine::rule::RuleEngineTrait,
+    types::Message,
     types::{NodeDescriptor, RuleChain},
     RuleEngine,
 };
@@ -106,6 +107,7 @@ async fn main() {
         .route("/api/chains/:id", get(get_chain))
         .route("/api/chains/:id", put(update_chain))
         .route("/api/chains/:id", delete(delete_chain))
+        .route("/api/chains/execute/:id", post(execute_chain))
         // .layer(TraceLayer::new_for_http())
         .with_state(AppState {
             engine: engine.clone(),
@@ -140,7 +142,10 @@ async fn create_chain(
 #[debug_handler]
 async fn get_chain(State(state): State<AppState>, Path(id): Path<Uuid>) -> impl IntoResponse {
     match state.engine.get_chain(id).await {
-        Some(chain) => Json(ApiResponse::success((*chain).clone())).into_response(),
+        Some(chain) => {
+            let chain = (*chain).clone(); // 解引用并克隆
+            Json(ApiResponse::success(chain)).into_response()
+        }
         None => (
             StatusCode::NOT_FOUND,
             Json(ApiResponse::<RuleChain>::error(404, "Rule chain not found")),
@@ -205,9 +210,40 @@ async fn delete_chain(
     }
 }
 
+// 执行规则链
+#[debug_handler]
+async fn execute_chain(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+    Json(msg): Json<Message>,
+) -> impl IntoResponse {
+    // 启动异步任务处理消息
+    tokio::spawn({
+        let engine = state.engine.clone();
+        async move {
+            if let Err(e) = engine.process_msg(id, msg).await {
+                tracing::error!("处理消息失败: {}", e);
+            }
+        }
+    });
+
+    // 立即返回成功响应
+    Json(ApiResponse::success("消息已接收并开始处理")).into_response()
+}
+
 // // 执行规则链
 // #[debug_handler]
-// async fn execute_chain(State(state): State<AppState>, Path(id): Path<Uuid>) -> impl IntoResponse {
-//     let chain = state.engine.get_chain(id).await.unwrap();
-//     let result = chain.execute().await;
+// async fn execute_chain(
+//     State(state): State<AppState>,
+//     Path(id): Path<Uuid>,
+//     Json(msg): Json<Message>,
+// ) -> impl IntoResponse {
+//     match state.engine.process_msg(id, msg).await {
+//         Ok(result) => Json(ApiResponse::success(result)).into_response(),
+//         Err(e) => (
+//             StatusCode::INTERNAL_SERVER_ERROR,
+//             Json(ApiResponse::<()>::error(500, &e.to_string())),
+//         )
+//             .into_response(),
+//     }
 // }
