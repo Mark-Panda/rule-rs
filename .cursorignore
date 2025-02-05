@@ -1,5 +1,0 @@
-/target
-volumes
-logs
-.env
-*.DS_Store
