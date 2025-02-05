@@ -1,23 +1,30 @@
 use axum::{
-    extract::State,
+    debug_handler,
+    extract::{Path, State},
+    http::StatusCode,
+    response::IntoResponse,
     response::Json,
     routing::{get, post},
     Router,
 };
-use rule_rs::{engine::rule::RuleEngineTrait, types::NodeDescriptor, RuleEngine};
+use rule_rs::{
+    engine::rule::RuleEngineTrait,
+    types::{NodeDescriptor, RuleChain},
+    RuleEngine,
+};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use uuid::Uuid; // 引入 async_trait 宏
 
 // API 响应格式
 #[derive(Debug, Serialize)]
-struct ApiResponse<T> {
+struct ApiResponse<T: Serialize> {
     code: i32,
     message: String,
     data: Option<T>,
 }
 
-impl<T> ApiResponse<T> {
+impl<T: Serialize> ApiResponse<T> {
     fn success(data: T) -> Self {
         Self {
             code: 0,
@@ -95,7 +102,7 @@ async fn main() {
     let app = Router::new()
         .route("/api/components", get(list_components))
         .route("/api/chains", post(create_chain))
-        // .route("/api/chains/:id", get(get_chain))
+        .route("/api/chains/:id", get(get_chain))
         // .route("/api/chains/:id", put(update_chain))
         // .route("/api/chains/:id", delete(delete_chain))
         // .layer(TraceLayer::new_for_http())
@@ -128,20 +135,18 @@ async fn create_chain(
     }
 }
 
-// // 获取规则链
-// #[debug_handler]
-// async fn get_chain(
-//     State(state): State<AppState>,
-//     Path(id): Path<Uuid>,
-// ) -> Result<Json<ApiResponse<Arc<RuleChain>>>, (StatusCode, Json<ApiResponse<()>>)> {
-//     match state.engine.get_chain(id).await {
-//         Some(chain) => Ok(Json(ApiResponse::success(chain))),
-//         None => Err((
-//             StatusCode::NOT_FOUND,
-//             Json(ApiResponse::error(404, "Rule chain not found")),
-//         )),
-//     }
-// }
+// 获取规则链
+#[debug_handler]
+async fn get_chain(State(state): State<AppState>, Path(id): Path<Uuid>) -> impl IntoResponse {
+    match state.engine.get_chain(id).await {
+        Some(chain) => Json(ApiResponse::success((*chain).clone())).into_response(),
+        None => (
+            StatusCode::NOT_FOUND,
+            Json(ApiResponse::<RuleChain>::error(404, "Rule chain not found")),
+        )
+            .into_response(),
+    }
+}
 
 // // 更新规则链
 // #[debug_handler]
