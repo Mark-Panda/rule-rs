@@ -4,7 +4,7 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
     response::Json,
-    routing::{get, post},
+    routing::{delete, get, post, put},
     Router,
 };
 use rule_rs::{
@@ -13,6 +13,7 @@ use rule_rs::{
     RuleEngine,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::sync::Arc;
 use uuid::Uuid; // 引入 async_trait 宏
 
@@ -103,8 +104,8 @@ async fn main() {
         .route("/api/components", get(list_components))
         .route("/api/chains", post(create_chain))
         .route("/api/chains/:id", get(get_chain))
-        // .route("/api/chains/:id", put(update_chain))
-        // .route("/api/chains/:id", delete(delete_chain))
+        .route("/api/chains/:id", put(update_chain))
+        .route("/api/chains/:id", delete(delete_chain))
         // .layer(TraceLayer::new_for_http())
         .with_state(AppState {
             engine: engine.clone(),
@@ -148,56 +149,65 @@ async fn get_chain(State(state): State<AppState>, Path(id): Path<Uuid>) -> impl 
     }
 }
 
-// // 更新规则链
+// 更新规则链
+#[debug_handler]
+async fn update_chain(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+    Json(req): Json<RuleChainRequest>,
+) -> Result<Json<ApiResponse<()>>, (StatusCode, Json<ApiResponse<()>>)> {
+    println!("update_chain: {:?}", req);
+    println!("id: {:?}", id);
+    // 检查规则链是否存在
+    if state.engine.get_chain(id).await.is_none() {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ApiResponse::error(404, "Rule chain not found")),
+        ));
+    }
+
+    // 构造更新后的规则链配置
+    let chain = json!({
+        "id": id,
+        "name": req.name,
+        "root": req.root,
+        "nodes": req.nodes,
+        "connections": req.connections,
+        "metadata": {
+            "version": state.engine.get_current_version().await + 1,
+            "created_at": chrono::Utc::now().timestamp_millis(),
+            "updated_at": chrono::Utc::now().timestamp_millis()
+        }
+    });
+
+    // 更新规则链
+    match state.engine.load_chain(&chain.to_string()).await {
+        Ok(_) => Ok(Json(ApiResponse::success(()))),
+        Err(e) => Err((
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse::error(400, &e.to_string())),
+        )),
+    }
+}
+
+// 删除规则链
+#[debug_handler]
+async fn delete_chain(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<ApiResponse<()>>, (StatusCode, Json<ApiResponse<()>>)> {
+    match state.engine.remove_chain(id).await {
+        Ok(_) => Ok(Json(ApiResponse::success(()))),
+        Err(e) => Err((
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse::error(400, &e.to_string())),
+        )),
+    }
+}
+
+// // 执行规则链
 // #[debug_handler]
-// async fn update_chain(
-//     State(state): State<AppState>,
-//     Path(id): Path<Uuid>,
-//     Json(req): Json<RuleChainRequest>,
-// ) -> Result<Json<ApiResponse<()>>, (StatusCode, Json<ApiResponse<()>>)> {
-//     // 检查规则链是否存在
-//     if state.engine.get_chain(id).await.is_none() {
-//         return Err((
-//             StatusCode::NOT_FOUND,
-//             Json(ApiResponse::error(404, "Rule chain not found")),
-//         ));
-//     }
-
-//     // 构造更新后的规则链配置
-//     let chain = json!({
-//         "id": id,
-//         "name": req.name,
-//         "root": req.root,
-//         "nodes": req.nodes,
-//         "connections": req.connections,
-//         "metadata": {
-//             "version": state.engine.get_current_version().await + 1,
-//             "created_at": chrono::Utc::now().timestamp_millis(),
-//             "updated_at": chrono::Utc::now().timestamp_millis()
-//         }
-//     });
-
-//     // 更新规则链
-//     match state.engine.load_chain(&chain.to_string()).await {
-//         Ok(_) => Ok(Json(ApiResponse::success(()))),
-//         Err(e) => Err((
-//             StatusCode::BAD_REQUEST,
-//             Json(ApiResponse::error(400, &e.to_string())),
-//         )),
-//     }
-// }
-
-// // 删除规则链
-// #[debug_handler]
-// async fn delete_chain(
-//     State(state): State<AppState>,
-//     Path(id): Path<Uuid>,
-// ) -> Result<Json<ApiResponse<()>>, (StatusCode, Json<ApiResponse<()>>)> {
-//     match state.engine.remove_chain(id).await {
-//         Ok(_) => Ok(Json(ApiResponse::success(()))),
-//         Err(e) => Err((
-//             StatusCode::BAD_REQUEST,
-//             Json(ApiResponse::error(400, &e.to_string())),
-//         )),
-//     }
+// async fn execute_chain(State(state): State<AppState>, Path(id): Path<Uuid>) -> impl IntoResponse {
+//     let chain = state.engine.get_chain(id).await.unwrap();
+//     let result = chain.execute().await;
 // }

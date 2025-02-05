@@ -724,14 +724,14 @@ impl RuleEngineTrait for RuleEngine {
     async fn remove_chain(&self, id: Uuid) -> Result<(), RuleError> {
         let mut chains = self.chains.write().await;
 
-        // 检查是否为根规则链
-        if let Some(chain) = chains.get(&id) {
-            if chain.root {
-                return Err(RuleError::ConfigError(
-                    "Cannot delete root chain".to_string(),
-                ));
-            }
-        }
+        // // 检查是否为根规则链
+        // if let Some(chain) = chains.get(&id) {
+        //     if chain.root {
+        //         return Err(RuleError::ConfigError(
+        //             "Cannot delete root chain".to_string(),
+        //         ));
+        //     }
+        // }
 
         // 检查是否被其他规则链引用
         for chain in chains.values() {
