@@ -52,8 +52,8 @@ impl NodeHandler for DelayNode {
             let mut count = 0;
             loop {
                 sleep(Duration::from_millis(self.config.delay_ms)).await;
-                let msg_clone = msg.clone();
-                ctx.send_next(msg_clone).await?;
+                // 发送到下一个节点
+                ctx.send_next(msg.clone()).await?;
 
                 count += 1;
                 if self.config.period_count > 0 && count >= self.config.period_count {
@@ -62,6 +62,8 @@ impl NodeHandler for DelayNode {
             }
         } else {
             sleep(Duration::from_millis(self.config.delay_ms)).await;
+            // 发送到下一个节点
+            ctx.send_next(msg.clone()).await?;
         }
         Ok(msg)
     }

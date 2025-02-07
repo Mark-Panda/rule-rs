@@ -117,13 +117,9 @@ impl JsFunctionNode {
 
 #[async_trait]
 impl NodeHandler for JsFunctionNode {
-    async fn handle<'a>(
-        &self,
-        node_ctx: NodeContext<'a>,
-        msg: Message,
-    ) -> Result<Message, RuleError> {
+    async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
         // 获取当前节点和规则链信息
-        let node = node_ctx.node;
+        let node = ctx.node;
         let chain_id = node.chain_id.to_string().replace("-", "_");
         let node_id = node.id.to_string().replace("-", "_");
 
@@ -132,20 +128,26 @@ impl NodeHandler for JsFunctionNode {
             let mut config = self.config.write().unwrap();
             config.chain_id = chain_id;
             config.node_id = node_id;
-        } // 锁在这里被释放
+        }
 
         // 获取运行时的互斥锁
         let runtime = self.runtime.lock().await;
-        let ctx = Context::full(&runtime).unwrap();
-        let result = ctx.with(|ctx| self.execute_js(&ctx, &msg))?;
+        let ctx_js = Context::full(&runtime).unwrap();
+        let result = ctx_js.with(|ctx| self.execute_js(&ctx, &msg))?;
+
         // 构造返回消息
-        Ok(Message {
+        let new_msg = Message {
             id: msg.id,
             msg_type: "js_function_result".to_string(),
             metadata: msg.metadata,
             data: result,
             timestamp: msg.timestamp,
-        })
+        };
+
+        // 发送到下一个节点
+        ctx.send_next(new_msg.clone()).await?;
+
+        Ok(new_msg)
     }
 
     fn get_descriptor(&self) -> NodeDescriptor {

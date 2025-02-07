@@ -41,6 +41,7 @@ impl<'a> NodeContext<'a> {
         // 如果有下一个节点，则执行
         if let Some(node) = next_node {
             let ctx = NodeContext::new(node, &self.create_subchain_context(), self.engine.clone());
+            println!("发送给下一节点: {:?}", node.id);
             self.engine.execute_node(node, &ctx, msg).await?;
         }
 

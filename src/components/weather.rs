@@ -122,7 +122,7 @@ struct WeatherInfo {
 
 #[async_trait]
 impl NodeHandler for WeatherNode {
-    async fn handle<'a>(&self, _ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
         // 从消息中获取城市名称，如果没有则使用配置中的默认城市
         let city = msg
             .data
@@ -139,9 +139,9 @@ impl NodeHandler for WeatherNode {
         })?;
 
         // 构造返回消息
-        let mut msg = msg;
-        msg.msg_type = "weather_info".to_string();
-        msg.data = serde_json::json!({
+        let mut new_msg = msg;
+        new_msg.msg_type = "weather_info".to_string();
+        new_msg.data = serde_json::json!({
             "城市": weather.city,
             "温度": weather.temperature,
             "天气": weather.condition,
@@ -149,8 +149,11 @@ impl NodeHandler for WeatherNode {
             "更新时间": weather.last_updated,
         });
 
-        info!("Weather node processed successfully: {:?}", msg);
-        Ok(msg)
+        // 发送到下一个节点
+        ctx.send_next(new_msg.clone()).await?;
+
+        info!("Weather node processed successfully: {:?}", new_msg);
+        Ok(new_msg)
     }
 
     fn get_descriptor(&self) -> NodeDescriptor {

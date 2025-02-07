@@ -60,7 +60,8 @@ impl NodeHandler for FilterNode {
     async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
         println!("filter condition: {}", self.config.condition);
         if self.eval_condition(&ctx, &msg)? {
-            println!("filter pass {}", msg.data.get("value").unwrap());
+            // 条件满足,发送到下一个节点
+            ctx.send_next(msg.clone()).await?;
             Ok(msg)
         } else {
             Err(RuleError::FilterReject)

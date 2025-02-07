@@ -74,13 +74,15 @@ impl SwitchNode {
 impl NodeHandler for SwitchNode {
     async fn handle<'a>(
         &self,
-        _ctx: NodeContext<'a>,
+        ctx: NodeContext<'a>,
         mut msg: Message,
     ) -> Result<Message, RuleError> {
         // 遍历所有分支条件
         for case in &self.config.cases {
             if self.evaluate_condition(case, &msg)? {
                 msg.metadata.insert("branch_name".into(), case.name.clone());
+                // 发送到对应分支的下一个节点
+                ctx.send_next(msg.clone()).await?;
                 return Ok(msg);
             }
         }
@@ -88,11 +90,10 @@ impl NodeHandler for SwitchNode {
         // 没有匹配的条件,使用默认分支
         if let Some(default) = &self.config.default_next {
             msg.metadata.insert("branch_name".into(), default.clone());
-            Ok(msg)
-        } else {
-            // 没有默认分支,返回原始消息
-            Ok(msg)
+            ctx.send_next(msg.clone()).await?;
         }
+        
+        Ok(msg)
     }
 
     fn get_descriptor(&self) -> NodeDescriptor {

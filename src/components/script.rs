@@ -87,13 +87,18 @@ impl ScriptNode {
 impl NodeHandler for ScriptNode {
     async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
         let new_data = self.execute_script(&ctx, &msg)?;
-        Ok(Message {
+        let new_msg = Message {
             id: msg.id,
             msg_type: self.config.output_type.clone().unwrap_or(msg.msg_type),
             metadata: msg.metadata,
             data: new_data,
             timestamp: msg.timestamp,
-        })
+        };
+
+        // 发送到下一个节点
+        ctx.send_next(new_msg.clone()).await?;
+
+        Ok(new_msg)
     }
 
     fn get_descriptor(&self) -> NodeDescriptor {

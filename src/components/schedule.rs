@@ -65,8 +65,8 @@ impl NodeHandler for ScheduleNode {
                     .await;
                 }
 
-                let msg_clone = msg.clone();
-                ctx.send_next(msg_clone).await?;
+                // 发送到下一个节点
+                ctx.send_next(msg.clone()).await?;
             }
         }
     }

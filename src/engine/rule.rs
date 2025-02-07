@@ -657,46 +657,14 @@ impl RuleEngineTrait for RuleEngine {
         chain: &RuleChain,
         ctx: &mut ExecutionContext,
     ) -> Result<Message, RuleError> {
-        // 获取或创建计数器
-        let counter = {
-            let mut counters = self.execution_counters.write().await;
-            counters
-                .entry(chain.id)
-                .or_insert_with(|| Arc::new(Mutex::new(0)))
-                .clone()
-        };
+        // 只获取并执行第一个节点
+        let start_node = chain
+            .get_start_node()?
+            .ok_or_else(|| RuleError::ConfigError("规则链没有起始节点".to_string()))?;
 
-        // 增加计数
-        {
-            let mut count = counter.lock().await;
-            *count += 1;
-        }
-
-        let result = async {
-            let mut current_node = chain.get_start_node()?;
-            while let Some(node) = current_node {
-                let engine_trait_object =
-                    Arc::new(self.clone()) as Arc<dyn RuleEngineTrait + Send + Sync>;
-                let node_ctx = NodeContext::new(node, ctx, engine_trait_object);
-                ctx.msg = self.execute_node(node, &node_ctx, ctx.msg.clone()).await?;
-                current_node = chain.get_next_node(&node.id, ctx)?;
-            }
-            Ok(ctx.msg.clone())
-        }
-        .await;
-
-        // 减少计数
-        {
-            let mut count = counter.lock().await;
-            *count = count.saturating_sub(1);
-            // 如果计数为0,从map中移除
-            if *count == 0 {
-                let mut counters = self.execution_counters.write().await;
-                counters.remove(&chain.id);
-            }
-        }
-
-        result
+        let node_ctx = NodeContext::new(start_node, ctx, Arc::new(self.clone()));
+        self.execute_node(start_node, &node_ctx, ctx.msg.clone())
+            .await
     }
 
     async fn execute_node<'a>(
@@ -706,7 +674,7 @@ impl RuleEngineTrait for RuleEngine {
         msg: Message,
     ) -> Result<Message, RuleError> {
         let manager = self.interceptor_manager.read().await;
-
+        println!("准备执行节点 : {:?}", node.id);
         // 获取节点处理器
         let handler = self
             .node_registry
