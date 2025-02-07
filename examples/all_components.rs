@@ -43,12 +43,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "type_name": "transform",
                 "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
                 "config": {
-                    "fields": {
-                        "transformed_value": "${msg.value * 2}",
-                        "timestamp": "${Date.now()}",
-                        "source": "transform_node"
+                    "template": {
+                        "name": "${msg.data.name}",
+                        "age": "${msg.data.age}",
+                        "greeting": "Hello ${msg.data.name}!"
                     },
-                    "dropFields": ["temp_field"]
+                    "node_type": "middle"
                 },
                 "layout": { "x": 500, "y": 100 }
             },
@@ -57,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "type_name": "transform_js",
                 "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
                 "config": {
-                    "script": "function transform(msg) { return { ...msg, processed: true, processed_time: new Date().toISOString() }; }"
+                    "script": "return { ...msg, processed: true, processed_time: new Date().toISOString() };"
                 },
                 "layout": { "x": 700, "y": 100 }
             },
