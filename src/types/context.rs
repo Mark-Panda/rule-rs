@@ -35,14 +35,18 @@ impl<'a> NodeContext<'a> {
             .await
             .ok_or_else(|| RuleError::ChainNotFound(self.node.chain_id))?;
 
+        // 创建执行上下文
+        let mut exec_ctx = ExecutionContext::new(msg);
+        exec_ctx.metadata = self.metadata.clone();
+
         // 获取下一个节点
-        let next_node = chain.get_next_node(&self.node.id, &self.create_subchain_context())?;
+        let next_node = chain.get_next_node(&self.node.id, &exec_ctx)?;
 
         // 如果有下一个节点，则执行
         if let Some(node) = next_node {
-            let ctx = NodeContext::new(node, &self.create_subchain_context(), self.engine.clone());
-            println!("发送给下一节点: {:?}", node.id);
-            self.engine.execute_node(node, &ctx, msg).await?;
+            println!("发送给下一节点: {}", node.id);
+            let ctx = NodeContext::new(node, &exec_ctx, self.engine.clone());
+            self.engine.execute_node(node, &ctx, exec_ctx.msg).await?;
         }
 
         Ok(())

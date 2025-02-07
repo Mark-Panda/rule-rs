@@ -134,7 +134,7 @@ impl NodeHandler for RestClientNode {
                     msg.metadata.insert("branch_name".into(), branch.clone());
                 }
 
-                // 发送到下一个节点
+                // 发送到成功分支的下一个节点
                 ctx.send_next(msg.clone()).await?;
                 Ok(msg)
             }
@@ -146,10 +146,10 @@ impl NodeHandler for RestClientNode {
                 // 设置失败分支
                 if let Some(branch) = &self.config.error_branch {
                     msg.metadata.insert("branch_name".into(), branch.clone());
-                    // 发送到错误分支
-                    ctx.send_next(msg.clone()).await?;
                 }
 
+                // 发送到失败分支的下一个节点
+                ctx.send_next(msg.clone()).await?;
                 Ok(msg)
             }
         }
