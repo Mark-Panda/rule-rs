@@ -19,3 +19,4 @@ cargo run --example switch_example
 cargo run --example transform_example
 cargo run --example weather_service
 cargo run --example server
+cargo run --example thread

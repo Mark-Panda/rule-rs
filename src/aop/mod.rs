@@ -1,7 +1,7 @@
 use crate::types::{Message, NodeContext, RuleError};
 use async_trait::async_trait;
 use std::sync::Arc;
-use tracing::info;
+use tracing::{debug, info};
 
 /// 节点拦截器
 #[async_trait]
@@ -83,6 +83,7 @@ impl InterceptorManager {
     }
 
     pub async fn before_process(&self, msg: &Message) -> Result<(), RuleError> {
+        debug!("执行消息前置拦截器");
         for interceptor in &self.msg_interceptors {
             interceptor.before_process(msg).await?;
         }
@@ -90,6 +91,7 @@ impl InterceptorManager {
     }
 
     pub async fn after_process(&self, msg: &Message) -> Result<(), RuleError> {
+        debug!("执行消息后置拦截器");
         for interceptor in &self.msg_interceptors {
             interceptor.after_process(msg).await?;
         }
@@ -122,6 +124,22 @@ impl NodeInterceptor for LoggingInterceptor {
 
     async fn error<'a>(&self, ctx: &NodeContext<'a>, error: &RuleError) -> Result<(), RuleError> {
         info!("节点 [{}] 执行出错: {:?}", ctx.node.id, error);
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct MessageLoggingInterceptor;
+
+#[async_trait]
+impl MessageInterceptor for MessageLoggingInterceptor {
+    async fn before_process(&self, msg: &Message) -> Result<(), RuleError> {
+        debug!("开始处理消息: {:?}", msg);
+        Ok(())
+    }
+
+    async fn after_process(&self, msg: &Message) -> Result<(), RuleError> {
+        debug!("消息处理完成: {:?}", msg);
         Ok(())
     }
 }
