@@ -3,29 +3,11 @@ use crate::types::{ExecutionContext, Message, NodeContext, NodeDescriptor, RuleE
 use async_trait::async_trait;
 
 #[derive(Debug)]
-pub struct ForkNode {
-    #[allow(dead_code)]
-    max_branches: u32,
-}
+pub struct ForkNode;
 
 impl ForkNode {
     pub fn new() -> Self {
-        Self {
-            max_branches: 2, // 限制最大分支数
-        }
-    }
-
-    async fn process_message(&self, msg: Message) -> Result<Vec<Message>, RuleError> {
-        let mut results = Vec::with_capacity(self.max_branches as usize);
-
-        // 限制分支数量
-        for i in 0..self.max_branches {
-            let mut new_msg = msg.clone();
-            new_msg.metadata.insert("branch".to_string(), i.to_string());
-            results.push(new_msg);
-        }
-
-        Ok(results)
+        Self
     }
 }
 

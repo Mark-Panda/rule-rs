@@ -315,8 +315,14 @@ impl RuleEngine {
                 "join",
                 Arc::new(|config| {
                     if config.is_object() && config.as_object().unwrap().is_empty() {
-                        Ok(Arc::new(JoinNode::new(JoinConfig { timeout: 0 }))
-                            as Arc<dyn NodeHandler>)
+                        Ok(Arc::new(JoinNode::new(JoinConfig {
+                            timeout: 0,
+                            success_branch: None,
+                            error_branch: None,
+                            common: CommonConfig {
+                                node_type: NodeType::Middle,
+                            },
+                        })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: JoinConfig = serde_json::from_value(config)?;
                         Ok(Arc::new(JoinNode::new(config)) as Arc<dyn NodeHandler>)

@@ -1,24 +1,36 @@
 use crate::engine::NodeHandler;
-use crate::types::{Message, NodeContext, NodeDescriptor, RuleError};
+use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
-use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::Mutex;
 use tokio::time::timeout;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct JoinConfig {
     #[serde(default)]
     pub timeout: u64, // 超时时间(秒)
+    pub success_branch: Option<String>, // 成功分支名称
+    pub error_branch: Option<String>,   // 失败分支名称
+    #[serde(flatten)]
+    pub common: CommonConfig,
+}
+
+impl Default for JoinConfig {
+    fn default() -> Self {
+        Self {
+            common: CommonConfig {
+                node_type: NodeType::Middle,
+            },
+            timeout: 30,
+            success_branch: None,
+            error_branch: None,
+        }
+    }
 }
 
 #[derive(Debug)]
 pub struct JoinNode {
     config: JoinConfig,
-    processed_msgs: Arc<Mutex<HashSet<String>>>,
-    max_iterations: u32,
 }
 
 #[derive(Debug, Serialize)]
@@ -30,33 +42,7 @@ struct WrapperMsg {
 
 impl JoinNode {
     pub fn new(config: JoinConfig) -> Self {
-        Self {
-            config,
-            processed_msgs: Arc::new(Mutex::new(HashSet::new())),
-            max_iterations: 100, // 设置最大迭代次数
-        }
-    }
-
-    async fn process_message(&self, msg: Message) -> Result<Message, RuleError> {
-        let msg_id = msg.id.to_string();
-        let mut processed = self.processed_msgs.lock().await;
-
-        // 检查消息是否已处理过
-        if processed.contains(&msg_id) {
-            return Ok(msg);
-        }
-
-        // 添加到已处理集合
-        processed.insert(msg_id);
-
-        // 检查迭代次数
-        if processed.len() > self.max_iterations as usize {
-            return Err(RuleError::NodeExecutionError(
-                "超过最大迭代次数限制".to_string(),
-            ));
-        }
-
-        Ok(msg)
+        Self { config }
     }
 }
 
@@ -64,17 +50,36 @@ impl JoinNode {
 impl NodeHandler for JoinNode {
     async fn handle<'a>(
         &'a self,
-        mut ctx: NodeContext<'a>,
+        ctx: NodeContext<'a>,
         msg: Message,
     ) -> Result<Message, RuleError> {
         // 检查是否是分支消息
         if !msg.metadata.contains_key("is_branch") {
             return Ok(msg);
         }
+        let mut msg = msg;
+
+        // 获取所有前置节点的连接数量
+        let expected_branches = {
+            let chain = ctx
+                .engine
+                .get_chain(ctx.node.chain_id)
+                .await
+                .ok_or_else(|| RuleError::ChainNotFound(ctx.node.chain_id))?;
+
+            let incoming_count = chain
+                .connections
+                .iter()
+                .filter(|conn| conn.to_id == ctx.node.id)
+                .count();
+
+            println!("Join节点 {} 的前置连接数: {}", ctx.node.id, incoming_count);
+            incoming_count
+        };
+        println!("expected_branches: {}", expected_branches);
 
         // 获取所有前置节点的结果
         let mut results = vec![];
-        let mut has_error = false;
 
         // 设置超时
         let timeout_duration = if self.config.timeout > 0 {
@@ -84,55 +89,46 @@ impl NodeHandler for JoinNode {
         };
 
         // 等待所有分支执行完成
+        let mut remaining_branches = expected_branches;
         match timeout(timeout_duration, async {
-            for result in ctx.get_branch_results().await {
-                match result {
-                    Ok(branch_msg) => {
-                        // 只处理分支消息
-                        if branch_msg.metadata.contains_key("is_branch") {
-                            results.push(WrapperMsg {
-                                msg: branch_msg.clone(),
-                                err: None,
-                                node_id: ctx.node.id.to_string(),
-                            });
-                        }
-                    }
-                    Err(e) => {
-                        has_error = true;
-                        results.push(WrapperMsg {
-                            msg: msg.clone(),
-                            err: Some(e.to_string()),
-                            node_id: ctx.node.id.to_string(),
-                        });
-                    }
-                }
+            while remaining_branches > 0 {
+                let branch_msg = msg.clone();
+                results.push(WrapperMsg {
+                    msg: branch_msg.clone(),
+                    err: None,
+                    node_id: ctx.node.id.to_string(),
+                });
+                remaining_branches -= 1;
             }
+            Ok::<(), RuleError>(())
         })
         .await
         {
             Ok(_) => {
-                // 移除分支标记
+                // 所有分支都收集完成
                 let mut result_msg = msg.clone();
-                result_msg.metadata.remove("is_branch");
-                result_msg.metadata.remove("branch_id");
 
-                // 合并结果
                 let merged_data = serde_json::json!({
                     "results": results,
                 });
                 result_msg.data = merged_data;
-
-                if has_error {
-                    ctx.set_next_branch("Failure");
+                // 设置成功分支
+                if let Some(branch) = &self.config.success_branch {
+                    result_msg
+                        .metadata
+                        .insert("branch_name".into(), branch.clone());
                 }
-
+                ctx.send_next(result_msg.clone()).await?;
                 Ok(result_msg)
             }
             Err(_) => {
-                ctx.set_next_branch("Failure");
-                Err(RuleError::NodeExecutionError(
-                    "Join节点执行超时".to_string(),
-                ))
+                // 设置失败分支
+                if let Some(branch) = &self.config.error_branch {
+                    msg.metadata.insert("branch_name".into(), branch.clone());
+                }
+                // 超时处理
+                ctx.send_next(msg.clone()).await?;
+                Ok(msg)
             }
         }
     }

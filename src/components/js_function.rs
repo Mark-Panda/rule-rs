@@ -5,9 +5,6 @@ use rquickjs::Context;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::sync::Arc;
-use std::sync::RwLock;
-use tokio::sync::Mutex;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct JsFunctionConfig {

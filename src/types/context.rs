@@ -125,10 +125,17 @@ impl<'a> NodeContext<'a> {
 
         // 按branch_id排序获取结果
         let mut branch_ids: Vec<_> = results.keys().collect();
-        branch_ids.sort();
+        branch_ids.sort_by(|a, b| {
+            a.parse::<usize>()
+                .unwrap()
+                .cmp(&b.parse::<usize>().unwrap())
+        });
+
+        println!("获取分支结果，排序后的branch_ids: {:?}", branch_ids);
 
         for branch_id in branch_ids {
             if let Some(msg) = results.get(branch_id) {
+                println!("获取到分支 {} 的结果: {:?}", branch_id, msg);
                 branch_msgs.push(Ok(msg.clone()));
             }
         }
