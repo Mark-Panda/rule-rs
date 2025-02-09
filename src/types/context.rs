@@ -1,4 +1,3 @@
-use super::*;
 use crate::engine::DynRuleEngine;
 use crate::types::{Connection, Message, Node, RuleError};
 use std::collections::HashMap;

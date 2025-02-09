@@ -4,6 +4,7 @@ use async_trait::async_trait;
 
 #[derive(Debug)]
 pub struct ForkNode {
+    #[allow(dead_code)]
     max_branches: u32,
 }
 

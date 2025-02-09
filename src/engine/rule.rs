@@ -6,8 +6,8 @@ use crate::components::{
     DelayConfig, DelayNode, FilterConfig, FilterNode, ForkNode, JoinConfig, JoinNode,
     JsFunctionConfig, JsFunctionNode, LogConfig, LogNode, RedisConfig, RedisNode, RedisOperation,
     RestClientConfig, RestClientNode, ScheduleConfig, ScheduleNode, ScriptConfig, ScriptNode,
-    SubchainConfig, SubchainNode, SwitchConfig, SwitchNode, TransformConfig, TransformJsConfig,
-    TransformJsNode, TransformNode, WeatherConfig, WeatherNode,
+    StartConfig, StartNode, SubchainConfig, SubchainNode, SwitchConfig, SwitchNode,
+    TransformConfig, TransformJsConfig, TransformJsNode, TransformNode, WeatherConfig, WeatherNode,
 };
 use crate::engine::{NodeFactory, NodeHandler, NodeRegistry, VersionManager};
 use crate::types::{
@@ -111,6 +111,18 @@ impl RuleEngine {
                     } else {
                         let config: LogConfig = serde_json::from_value(config)?;
                         Ok(Arc::new(LogNode::new(config)) as Arc<dyn NodeHandler>)
+                    }
+                }),
+            ),
+            (
+                "start",
+                Arc::new(|config| {
+                    if config.is_object() && config.as_object().unwrap().is_empty() {
+                        Ok(Arc::new(StartNode::new(StartConfig::default()))
+                            as Arc<dyn NodeHandler>)
+                    } else {
+                        let config: StartConfig = serde_json::from_value(config)?;
+                        Ok(Arc::new(StartNode::new(config)) as Arc<dyn NodeHandler>)
                     }
                 }),
             ),

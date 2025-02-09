@@ -13,23 +13,35 @@ const RULE_CHAIN: &str = r#"{
     "root": true,
     "nodes": [
         {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
-            "type_name": "custom/upper",
+            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
+            "type_name": "start",
             "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {},
             "layout": { "x": 100, "y": 100 }
         },
         {
+            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
+            "type_name": "custom/upper",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
+            "config": {},
+            "layout": { "x": 300, "y": 100 }
+        },
+        {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
             "type_name": "log",
-            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301", 
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
                 "template": "转换结果: ${msg.data}"
             },
-            "layout": { "x": 300, "y": 100 }
+            "layout": { "x": 500, "y": 100 }
         }
     ],
     "connections": [
+        {
+            "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
+            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
+            "type_name": "Success"
+        },
         {
             "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
             "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
