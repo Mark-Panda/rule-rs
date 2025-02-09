@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use rule_rs::engine::NodeHandler;
-use rule_rs::types::{CommonConfig, NodeContext, NodeDescriptor, NodeType, RuleError};
-use rule_rs::{engine::rule::RuleEngineTrait, Message, RuleEngine};
+use rule_rs::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
+use rule_rs::{engine::rule::RuleEngineTrait, RuleEngine};
 use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
@@ -33,7 +33,7 @@ const RULE_CHAIN: &str = r#"{
         {
             "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
             "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
-            "type_name": "success"
+            "type_name": "Success"
         }
     ],
     "metadata": {
@@ -59,6 +59,7 @@ impl Default for UpperConfig {
     }
 }
 
+#[derive(Debug)]
 pub struct UpperNode {
     #[allow(dead_code)]
     config: UpperConfig,
@@ -72,7 +73,11 @@ impl UpperNode {
 
 #[async_trait]
 impl NodeHandler for UpperNode {
-    async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(
+        &'a self,
+        ctx: NodeContext<'a>,
+        msg: Message,
+    ) -> Result<Message, RuleError> {
         // 将消息内容转换为大写
         if let Some(text) = msg.data.as_str() {
             let upper_text = text.to_uppercase();
