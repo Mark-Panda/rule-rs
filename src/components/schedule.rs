@@ -29,6 +29,7 @@ impl Default for ScheduleConfig {
     }
 }
 
+#[derive(Debug)]
 pub struct ScheduleNode {
     #[allow(dead_code)]
     config: ScheduleConfig,
@@ -52,7 +53,11 @@ impl ScheduleNode {
 
 #[async_trait]
 impl NodeHandler for ScheduleNode {
-    async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(
+        &'a self,
+        ctx: NodeContext<'a>,
+        msg: Message,
+    ) -> Result<Message, RuleError> {
         loop {
             if let Some(next_time) = self.next_schedule_time() {
                 let now = Local::now();

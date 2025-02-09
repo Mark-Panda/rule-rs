@@ -24,6 +24,7 @@ impl Default for SubchainConfig {
     }
 }
 
+#[derive(Debug)]
 pub struct SubchainNode {
     config: SubchainConfig,
 }
@@ -36,7 +37,7 @@ impl SubchainNode {
 
 #[async_trait]
 impl NodeHandler for SubchainNode {
-    async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(&'a self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
         let subchain = ctx
             .engine
             .get_chain(self.config.chain_id)

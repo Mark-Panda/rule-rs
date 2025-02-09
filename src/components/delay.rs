@@ -35,6 +35,7 @@ impl Default for DelayConfig {
 }
 
 /// 延迟处理节点
+#[derive(Debug)]
 pub struct DelayNode {
     config: DelayConfig,
 }
@@ -47,7 +48,11 @@ impl DelayNode {
 
 #[async_trait]
 impl NodeHandler for DelayNode {
-    async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(
+        &'a self,
+        ctx: NodeContext<'a>,
+        msg: Message,
+    ) -> Result<Message, RuleError> {
         if self.config.periodic {
             let mut count = 0;
             loop {

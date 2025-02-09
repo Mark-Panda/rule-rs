@@ -29,6 +29,7 @@ impl Default for WeatherConfig {
 }
 
 // 组件实现
+#[derive(Debug)]
 pub struct WeatherNode {
     config: WeatherConfig,
     client: Client,
@@ -122,7 +123,7 @@ struct WeatherInfo {
 
 #[async_trait]
 impl NodeHandler for WeatherNode {
-    async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(&'a self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
         // 从消息中获取城市名称，如果没有则使用配置中的默认城市
         let city = msg
             .data

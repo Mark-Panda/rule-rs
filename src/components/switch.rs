@@ -32,6 +32,7 @@ impl Default for SwitchConfig {
     }
 }
 
+#[derive(Debug)]
 pub struct SwitchNode {
     config: SwitchConfig,
 }
@@ -73,7 +74,7 @@ impl SwitchNode {
 #[async_trait]
 impl NodeHandler for SwitchNode {
     async fn handle<'a>(
-        &self,
+        &'a self,
         ctx: NodeContext<'a>,
         mut msg: Message,
     ) -> Result<Message, RuleError> {
@@ -92,7 +93,7 @@ impl NodeHandler for SwitchNode {
             msg.metadata.insert("branch_name".into(), default.clone());
             ctx.send_next(msg.clone()).await?;
         }
-        
+
         Ok(msg)
     }
 

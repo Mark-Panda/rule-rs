@@ -1,7 +1,7 @@
 use crate::engine::NodeHandler;
 use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
-use rquickjs::{Context, Runtime};
+use rquickjs::Context;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::sync::RwLock;
 use tokio::sync::Mutex;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct JsFunctionConfig {
     pub functions: HashMap<String, String>, // 函数名 -> 函数定义
     pub main: String,                       // 主函数名
@@ -35,17 +35,14 @@ impl Default for JsFunctionConfig {
     }
 }
 
+#[derive(Debug)]
 pub struct JsFunctionNode {
-    config: RwLock<JsFunctionConfig>,
-    runtime: Arc<Mutex<Runtime>>,
+    config: JsFunctionConfig,
 }
 
 impl JsFunctionNode {
     pub fn new(config: JsFunctionConfig) -> Self {
-        Self {
-            config: RwLock::new(config),
-            runtime: Arc::new(Mutex::new(Runtime::new().unwrap())),
-        }
+        Self { config }
     }
 
     fn replace_function_names(&self, code: &str, config: &JsFunctionConfig) -> String {
@@ -66,14 +63,14 @@ impl JsFunctionNode {
 
     fn register_functions<'js>(&self, ctx: &rquickjs::Ctx<'js>) -> Result<(), RuleError> {
         // 注册所有函数
-        let config = self.config.read().unwrap();
+        let config = self.config.functions.clone();
 
         // 先处理所有函数的代码
         let mut processed_functions: HashMap<String, String> = HashMap::new();
-        for (name, code) in &config.functions {
-            let func_name = format!("{}_{}_{}", name, config.chain_id, config.node_id);
+        for (name, code) in &config {
+            let func_name = format!("{}_{}_{}", name, self.config.chain_id, self.config.node_id);
             // 替换函数体中的其他函数调用
-            let modified_code = self.replace_function_names(code, &config);
+            let modified_code = self.replace_function_names(code, &self.config);
             processed_functions.insert(func_name, modified_code);
         }
 
@@ -99,8 +96,10 @@ impl JsFunctionNode {
         self.register_functions(ctx)?;
 
         // 注入消息对象
-        let config = self.config.read().unwrap();
-        let main_name = format!("{}_{}_{}", config.main, config.chain_id, config.node_id);
+        let main_name = format!(
+            "{}_{}_{}",
+            self.config.main, self.config.chain_id, self.config.node_id
+        );
         let msg_json = serde_json::to_string(&msg).unwrap();
         ctx.eval::<(), _>(format!("const msg = {};", msg_json))
             .map_err(|e| RuleError::NodeExecutionError(e.to_string()))?;
@@ -117,21 +116,13 @@ impl JsFunctionNode {
 
 #[async_trait]
 impl NodeHandler for JsFunctionNode {
-    async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
-        // 获取当前节点和规则链信息
-        let node = ctx.node;
-        let chain_id = node.chain_id.to_string().replace("-", "_");
-        let node_id = node.id.to_string().replace("-", "_");
-
-        // 更新配置并立即释放锁
-        {
-            let mut config = self.config.write().unwrap();
-            config.chain_id = chain_id;
-            config.node_id = node_id;
-        }
-
-        // 获取运行时的互斥锁
-        let runtime = self.runtime.lock().await;
+    async fn handle<'a>(
+        &'a self,
+        ctx: NodeContext<'a>,
+        msg: Message,
+    ) -> Result<Message, RuleError> {
+        // 创建新的运行时
+        let runtime = rquickjs::Runtime::new().unwrap();
         let ctx_js = Context::full(&runtime).unwrap();
         let result = ctx_js.with(|ctx| self.execute_js(&ctx, &msg))?;
 

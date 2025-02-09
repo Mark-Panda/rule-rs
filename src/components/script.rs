@@ -5,6 +5,7 @@ use rquickjs::{Context, Function, Runtime};
 use serde::Deserialize;
 use serde_json::Value;
 
+#[derive(Debug)]
 pub struct ScriptNode {
     pub(crate) config: ScriptConfig,
 }
@@ -85,7 +86,7 @@ impl ScriptNode {
 
 #[async_trait]
 impl NodeHandler for ScriptNode {
-    async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(&'a self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
         let new_data = self.execute_script(&ctx, &msg)?;
         let new_msg = Message {
             id: msg.id,

@@ -94,6 +94,7 @@ impl Default for RedisConfig {
     }
 }
 
+#[derive(Debug)]
 pub struct RedisNode {
     config: RedisConfig,
     client: Client,
@@ -146,7 +147,7 @@ impl RedisNode {
 
 #[async_trait]
 impl NodeHandler for RedisNode {
-    async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(&'a self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
         let mut conn = self
             .client
             .get_multiplexed_async_connection()

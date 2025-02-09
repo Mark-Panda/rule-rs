@@ -22,6 +22,7 @@ impl Default for LogConfig {
     }
 }
 
+#[derive(Debug)]
 pub struct LogNode {
     config: LogConfig,
 }
@@ -84,7 +85,7 @@ impl LogNode {
 
 #[async_trait]
 impl NodeHandler for LogNode {
-    async fn handle<'a>(&self, _ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(&'a self, _ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
         // 格式化并输出日志
         let log_message = self.format_message(&msg);
         info!("log组件输出: {}", log_message);

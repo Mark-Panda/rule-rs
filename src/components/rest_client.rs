@@ -35,6 +35,7 @@ impl Default for RestClientConfig {
     }
 }
 
+#[derive(Debug)]
 pub struct RestClientNode {
     config: RestClientConfig,
     client: Client,
@@ -118,7 +119,7 @@ impl RestClientNode {
 
 #[async_trait]
 impl NodeHandler for RestClientNode {
-    async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(&'a self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
         let mut msg = msg;
 
         // 发送请求并处理结果

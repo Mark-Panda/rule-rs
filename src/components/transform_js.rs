@@ -5,6 +5,7 @@ use rquickjs::{Context, Runtime};
 use serde::Deserialize;
 use serde_json::Value;
 
+#[derive(Debug)]
 pub struct TransformJsNode {
     pub(crate) config: TransformJsConfig,
 }
@@ -64,7 +65,7 @@ impl TransformJsNode {
 
 #[async_trait]
 impl NodeHandler for TransformJsNode {
-    async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(&'a self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
         let new_data = self.execute_js(&msg)?;
         let transformed_msg = Message {
             id: msg.id,

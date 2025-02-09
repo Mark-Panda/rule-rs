@@ -3,11 +3,11 @@ use crate::aop::{
     NodeInterceptor,
 };
 use crate::components::{
-    DelayConfig, DelayNode, FilterConfig, FilterNode, JsFunctionConfig, JsFunctionNode, LogConfig,
-    LogNode, RedisConfig, RedisNode, RedisOperation, RestClientConfig, RestClientNode,
-    ScheduleConfig, ScheduleNode, ScriptConfig, ScriptNode, SubchainConfig, SubchainNode,
-    SwitchConfig, SwitchNode, TransformConfig, TransformJsConfig, TransformJsNode, TransformNode,
-    WeatherConfig, WeatherNode,
+    DelayConfig, DelayNode, FilterConfig, FilterNode, ForkNode, JoinConfig, JoinNode,
+    JsFunctionConfig, JsFunctionNode, LogConfig, LogNode, RedisConfig, RedisNode, RedisOperation,
+    RestClientConfig, RestClientNode, ScheduleConfig, ScheduleNode, ScriptConfig, ScriptNode,
+    SubchainConfig, SubchainNode, SwitchConfig, SwitchNode, TransformConfig, TransformJsConfig,
+    TransformJsNode, TransformNode, WeatherConfig, WeatherNode,
 };
 use crate::engine::{NodeFactory, NodeHandler, NodeRegistry, VersionManager};
 use crate::types::{
@@ -292,6 +292,22 @@ impl RuleEngine {
                     } else {
                         let config: JsFunctionConfig = serde_json::from_value(config)?;
                         Ok(Arc::new(JsFunctionNode::new(config)) as Arc<dyn NodeHandler>)
+                    }
+                }),
+            ),
+            (
+                "fork",
+                Arc::new(|_config| Ok(Arc::new(ForkNode::new()) as Arc<dyn NodeHandler>)),
+            ),
+            (
+                "join",
+                Arc::new(|config| {
+                    if config.is_object() && config.as_object().unwrap().is_empty() {
+                        Ok(Arc::new(JoinNode::new(JoinConfig { timeout: 0 }))
+                            as Arc<dyn NodeHandler>)
+                    } else {
+                        let config: JoinConfig = serde_json::from_value(config)?;
+                        Ok(Arc::new(JoinNode::new(config)) as Arc<dyn NodeHandler>)
                     }
                 }),
             ),

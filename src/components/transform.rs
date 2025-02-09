@@ -5,6 +5,7 @@ use serde::Deserialize;
 use serde_json::json;
 use serde_json::Value;
 
+#[derive(Debug)]
 pub struct TransformNode {
     pub(crate) config: TransformConfig,
 }
@@ -93,7 +94,7 @@ impl TransformNode {
 
 #[async_trait]
 impl NodeHandler for TransformNode {
-    async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(&'a self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
         // 执行转换
         let new_data = self.apply_template(&msg)?;
         let transformed_msg = Message {

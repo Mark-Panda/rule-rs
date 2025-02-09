@@ -7,8 +7,10 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 #[async_trait]
-pub trait NodeHandler: Send + Sync {
-    async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError>;
+pub trait NodeHandler: Send + Sync + std::fmt::Debug {
+    async fn handle<'a>(&'a self, ctx: NodeContext<'a>, msg: Message)
+        -> Result<Message, RuleError>;
+
     fn get_descriptor(&self) -> NodeDescriptor;
 }
 
