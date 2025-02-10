@@ -1,5 +1,5 @@
 use crate::engine::NodeHandler;
-use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
+use crate::types::{Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use rquickjs::{Context, Runtime};
 use serde::Deserialize;
@@ -13,17 +13,12 @@ pub struct TransformJsNode {
 #[derive(Debug, Deserialize)]
 pub struct TransformJsConfig {
     pub script: String,
-    #[serde(flatten)]
-    pub common: CommonConfig,
 }
 
 impl Default for TransformJsConfig {
     fn default() -> Self {
         Self {
             script: "return msg;".to_string(),
-            common: CommonConfig {
-                node_type: NodeType::Middle,
-            },
         }
     }
 }
@@ -65,7 +60,11 @@ impl TransformJsNode {
 
 #[async_trait]
 impl NodeHandler for TransformJsNode {
-    async fn handle<'a>(&'a self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(
+        &'a self,
+        ctx: NodeContext<'a>,
+        msg: Message,
+    ) -> Result<Message, RuleError> {
         let new_data = self.execute_js(&msg)?;
         let transformed_msg = Message {
             id: msg.id,
@@ -86,6 +85,7 @@ impl NodeHandler for TransformJsNode {
             type_name: "transform_js".to_string(),
             name: "JS转换器".to_string(),
             description: "使用JavaScript转换消息".to_string(),
+            node_type: NodeType::Middle,
         }
     }
 }

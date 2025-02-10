@@ -1,5 +1,5 @@
 use crate::engine::NodeHandler;
-use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
+use crate::types::{Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::json;
@@ -13,17 +13,12 @@ pub struct TransformNode {
 #[derive(Debug, Deserialize)]
 pub struct TransformConfig {
     pub template: Value,
-    #[serde(flatten)]
-    pub common: CommonConfig,
 }
 
 impl Default for TransformConfig {
     fn default() -> Self {
         Self {
             template: json!({}),
-            common: CommonConfig {
-                node_type: NodeType::Middle,
-            },
         }
     }
 }
@@ -94,7 +89,11 @@ impl TransformNode {
 
 #[async_trait]
 impl NodeHandler for TransformNode {
-    async fn handle<'a>(&'a self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(
+        &'a self,
+        ctx: NodeContext<'a>,
+        msg: Message,
+    ) -> Result<Message, RuleError> {
         // 执行转换
         let new_data = self.apply_template(&msg)?;
         let transformed_msg = Message {
@@ -107,7 +106,7 @@ impl NodeHandler for TransformNode {
 
         // 发送到下一个节点
         ctx.send_next(transformed_msg.clone()).await?;
-        
+
         Ok(transformed_msg)
     }
 
@@ -116,6 +115,7 @@ impl NodeHandler for TransformNode {
             type_name: "transform".to_string(),
             name: "消息转换器".to_string(),
             description: "转换消息格式".to_string(),
+            node_type: NodeType::Middle,
         }
     }
 }

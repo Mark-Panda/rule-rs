@@ -1,5 +1,5 @@
 use crate::engine::NodeHandler;
-use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
+use crate::types::{Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use reqwest::Client;
 use serde::Deserialize;
@@ -15,8 +15,6 @@ pub struct RestClientConfig {
     pub timeout_ms: Option<u64>,
     pub success_branch: Option<String>, // 成功分支名称
     pub error_branch: Option<String>,   // 失败分支名称
-    #[serde(flatten)]
-    pub common: CommonConfig,
 }
 
 impl Default for RestClientConfig {
@@ -28,9 +26,6 @@ impl Default for RestClientConfig {
             timeout_ms: None,
             success_branch: None,
             error_branch: None,
-            common: CommonConfig {
-                node_type: NodeType::Middle,
-            },
         }
     }
 }
@@ -119,7 +114,11 @@ impl RestClientNode {
 
 #[async_trait]
 impl NodeHandler for RestClientNode {
-    async fn handle<'a>(&'a self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(
+        &'a self,
+        ctx: NodeContext<'a>,
+        msg: Message,
+    ) -> Result<Message, RuleError> {
         let mut msg = msg;
 
         // 发送请求并处理结果
@@ -161,6 +160,7 @@ impl NodeHandler for RestClientNode {
             type_name: "rest_client".to_string(),
             name: "HTTP客户端".to_string(),
             description: "发送HTTP请求,支持成功/失败分支路由".to_string(),
+            node_type: NodeType::Middle,
         }
     }
 }

@@ -1,5 +1,5 @@
 use crate::engine::NodeHandler;
-use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
+use crate::types::{Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -11,8 +11,6 @@ pub struct WeatherConfig {
     pub api_key: String,
     pub city: String,
     pub language: String,
-    #[serde(flatten)]
-    pub common: CommonConfig,
 }
 
 impl Default for WeatherConfig {
@@ -21,9 +19,6 @@ impl Default for WeatherConfig {
             api_key: "demo".to_string(),
             city: String::new(),
             language: "zh".to_string(),
-            common: CommonConfig {
-                node_type: NodeType::Middle,
-            },
         }
     }
 }
@@ -123,7 +118,11 @@ struct WeatherInfo {
 
 #[async_trait]
 impl NodeHandler for WeatherNode {
-    async fn handle<'a>(&'a self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(
+        &'a self,
+        ctx: NodeContext<'a>,
+        msg: Message,
+    ) -> Result<Message, RuleError> {
         // 从消息中获取城市名称，如果没有则使用配置中的默认城市
         let city = msg
             .data
@@ -162,6 +161,7 @@ impl NodeHandler for WeatherNode {
             type_name: "weather".to_string(),
             name: "天气服务".to_string(),
             description: "获取指定城市的天气信息".to_string(),
+            node_type: NodeType::Middle,
         }
     }
 }

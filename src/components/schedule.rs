@@ -1,5 +1,5 @@
 use crate::engine::NodeHandler;
-use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
+use crate::types::{Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use chrono::{DateTime, Local, Utc};
 use cron::Schedule;
@@ -13,8 +13,6 @@ pub struct ScheduleConfig {
     pub cron: String,
     /// 时区偏移(小时)
     pub timezone_offset: i32,
-    #[serde(flatten)]
-    pub common: CommonConfig,
 }
 
 impl Default for ScheduleConfig {
@@ -22,9 +20,6 @@ impl Default for ScheduleConfig {
         Self {
             cron: "*/1 * * * * *".to_string(), // 默认每秒执行
             timezone_offset: 0,
-            common: CommonConfig {
-                node_type: NodeType::Head,
-            },
         }
     }
 }
@@ -81,6 +76,7 @@ impl NodeHandler for ScheduleNode {
             type_name: "schedule".to_string(),
             name: "定时节点".to_string(),
             description: "按Cron表达式定时执行".to_string(),
+            node_type: NodeType::Head,
         }
     }
 }

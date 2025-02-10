@@ -1,21 +1,14 @@
 use async_trait::async_trait;
 use rule_rs::engine::NodeHandler;
-use rule_rs::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
+use rule_rs::types::{Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
-pub struct UpperConfig {
-    #[serde(flatten)]
-    pub common: CommonConfig,
-}
+pub struct UpperConfig {}
 
 impl Default for UpperConfig {
     fn default() -> Self {
-        Self {
-            common: CommonConfig {
-                node_type: NodeType::Middle,
-            },
-        }
+        Self {}
     }
 }
 
@@ -53,6 +46,7 @@ impl NodeHandler for UpperNode {
             type_name: "custom/upper".to_string(),
             name: "大写转换节点".to_string(),
             description: "将文本转换为大写".to_string(),
+            node_type: NodeType::Middle,
         }
     }
 }

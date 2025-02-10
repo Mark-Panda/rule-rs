@@ -1,5 +1,5 @@
 use crate::engine::NodeHandler;
-use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
+use crate::types::{Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use rquickjs::{Context, Function, Runtime};
 use serde::Deserialize;
@@ -14,8 +14,6 @@ pub struct ScriptNode {
 pub struct ScriptConfig {
     pub script: String,
     pub output_type: Option<String>,
-    #[serde(flatten)]
-    pub common: CommonConfig,
 }
 
 impl Default for ScriptConfig {
@@ -23,9 +21,6 @@ impl Default for ScriptConfig {
         Self {
             script: "return msg;".to_string(),
             output_type: None,
-            common: CommonConfig {
-                node_type: NodeType::Middle,
-            },
         }
     }
 }
@@ -86,7 +81,11 @@ impl ScriptNode {
 
 #[async_trait]
 impl NodeHandler for ScriptNode {
-    async fn handle<'a>(&'a self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(
+        &'a self,
+        ctx: NodeContext<'a>,
+        msg: Message,
+    ) -> Result<Message, RuleError> {
         let new_data = self.execute_script(&ctx, &msg)?;
         let new_msg = Message {
             id: msg.id,
@@ -107,6 +106,7 @@ impl NodeHandler for ScriptNode {
             type_name: "script".to_string(),
             name: "脚本节点".to_string(),
             description: "执行自定义脚本".to_string(),
+            node_type: NodeType::Middle,
         }
     }
 }

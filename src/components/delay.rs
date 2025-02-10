@@ -1,5 +1,5 @@
 use crate::engine::NodeHandler;
-use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
+use crate::types::{Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use serde::Deserialize;
 use std::time::Duration;
@@ -16,9 +16,6 @@ pub struct DelayConfig {
 
     /// 周期执行次数,0表示无限循环
     pub period_count: u32,
-
-    #[serde(flatten)]
-    pub common: CommonConfig,
 }
 
 impl Default for DelayConfig {
@@ -27,9 +24,6 @@ impl Default for DelayConfig {
             delay_ms: 1000,
             periodic: false,
             period_count: 0,
-            common: CommonConfig {
-                node_type: NodeType::Head,
-            },
         }
     }
 }
@@ -78,6 +72,7 @@ impl NodeHandler for DelayNode {
             type_name: "delay".to_string(),
             name: "延时节点".to_string(),
             description: "延迟处理消息,支持一次性延迟和周期性延迟".to_string(),
+            node_type: NodeType::Head,
         }
     }
 }

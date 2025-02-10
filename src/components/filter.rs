@@ -1,5 +1,5 @@
 use crate::engine::NodeHandler;
-use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
+use crate::types::{Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use serde::Deserialize;
 
@@ -12,8 +12,6 @@ pub struct FilterNode {
 pub struct FilterConfig {
     pub condition: String,
     pub js_script: Option<String>,
-    #[serde(flatten)]
-    pub common: CommonConfig,
 }
 
 impl Default for FilterConfig {
@@ -21,9 +19,6 @@ impl Default for FilterConfig {
         Self {
             condition: "true".to_string(),
             js_script: None,
-            common: CommonConfig {
-                node_type: NodeType::Middle,
-            },
         }
     }
 }
@@ -78,6 +73,7 @@ impl NodeHandler for FilterNode {
             type_name: "filter".to_string(),
             name: "消息过滤器".to_string(),
             description: "根据条件过滤消息".to_string(),
+            node_type: NodeType::Middle,
         }
     }
 }

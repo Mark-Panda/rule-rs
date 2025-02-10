@@ -1,5 +1,5 @@
 use crate::engine::NodeHandler;
-use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
+use crate::types::{Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use rquickjs::Context;
 use serde::Deserialize;
@@ -14,8 +14,6 @@ pub struct JsFunctionConfig {
     pub chain_id: String,
     #[serde(default)]
     pub node_id: String,
-    #[serde(flatten)]
-    pub common: CommonConfig,
 }
 
 impl Default for JsFunctionConfig {
@@ -25,9 +23,6 @@ impl Default for JsFunctionConfig {
             main: "main".to_string(),
             chain_id: String::new(),
             node_id: String::new(),
-            common: CommonConfig {
-                node_type: NodeType::Middle,
-            },
         }
     }
 }
@@ -143,6 +138,7 @@ impl NodeHandler for JsFunctionNode {
             type_name: "js_function".to_string(),
             name: "JS函数节点".to_string(),
             description: "执行自定义JS函数".to_string(),
+            node_type: NodeType::Middle,
         }
     }
 }

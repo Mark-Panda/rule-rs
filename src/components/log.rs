@@ -1,5 +1,5 @@
 use crate::engine::NodeHandler;
-use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
+use crate::types::{Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use serde::Deserialize;
 use tracing::info;
@@ -7,17 +7,12 @@ use tracing::info;
 #[derive(Debug, Deserialize)]
 pub struct LogConfig {
     pub template: String,
-    #[serde(flatten)]
-    pub common: CommonConfig,
 }
 
 impl Default for LogConfig {
     fn default() -> Self {
         Self {
             template: String::new(),
-            common: CommonConfig {
-                node_type: NodeType::Tail,
-            },
         }
     }
 }
@@ -96,6 +91,7 @@ impl NodeHandler for LogNode {
             type_name: "log".to_string(),
             name: "日志节点".to_string(),
             description: "输出日志消息".to_string(),
+            node_type: NodeType::Tail,
         }
     }
 }

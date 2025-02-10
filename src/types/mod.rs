@@ -40,7 +40,7 @@ pub struct Metadata {
     pub updated_at: i64,
 }
 
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, PartialEq, Serialize)]
 pub enum NodeType {
     #[serde(rename = "head")]
     Head, // 头节点
