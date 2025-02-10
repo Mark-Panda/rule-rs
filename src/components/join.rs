@@ -1,9 +1,18 @@
 use crate::engine::NodeHandler;
 use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
-use tokio::time::timeout;
+use tokio::sync::Mutex;
+
+lazy_static! {
+    static ref GLOBAL_JOIN_STATE: Arc<Mutex<HashMap<String, Vec<Message>>>> =
+        Arc::new(Mutex::new(HashMap::new()));
+}
 
 #[derive(Debug, Deserialize)]
 pub struct JoinConfig {
@@ -33,13 +42,6 @@ pub struct JoinNode {
     config: JoinConfig,
 }
 
-#[derive(Debug, Serialize)]
-struct WrapperMsg {
-    msg: Message,
-    err: Option<String>,
-    node_id: String,
-}
-
 impl JoinNode {
     pub fn new(config: JoinConfig) -> Self {
         Self { config }
@@ -53,83 +55,77 @@ impl NodeHandler for JoinNode {
         ctx: NodeContext<'a>,
         msg: Message,
     ) -> Result<Message, RuleError> {
-        // 检查是否是分支消息
-        if !msg.metadata.contains_key("is_branch") {
-            return Ok(msg);
-        }
-        let mut msg = msg;
+        let chain = ctx
+            .engine
+            .get_chain(ctx.node.chain_id)
+            .await
+            .ok_or(RuleError::ChainNotFound(ctx.node.chain_id))?;
 
-        // 获取所有前置节点的连接数量
-        let expected_branches = {
-            let chain = ctx
-                .engine
-                .get_chain(ctx.node.chain_id)
-                .await
-                .ok_or_else(|| RuleError::ChainNotFound(ctx.node.chain_id))?;
+        let expected_branches = chain
+            .connections
+            .iter()
+            .filter(|conn| conn.to_id == ctx.node.id)
+            .count();
 
-            let incoming_count = chain
-                .connections
-                .iter()
-                .filter(|conn| conn.to_id == ctx.node.id)
-                .count();
+        // 使用全局状态存储
+        let mut global_state = GLOBAL_JOIN_STATE.lock().await;
+        let messages = global_state
+            .entry(msg.id.to_string())
+            .or_insert_with(Vec::new);
 
-            println!("Join节点 {} 的前置连接数: {}", ctx.node.id, incoming_count);
-            incoming_count
-        };
-        println!("expected_branches: {}", expected_branches);
+        println!(
+            "Join节点 {} 当前状态 - 已收集消息数: {}",
+            ctx.node.id,
+            messages.len()
+        );
+        messages.push(msg.clone());
+        println!(
+            "Join节点 {} 收集到新的分支消息后 - 消息数: {}",
+            ctx.node.id,
+            messages.len()
+        );
 
-        // 获取所有前置节点的结果
-        let mut results = vec![];
+        if messages.len() >= expected_branches {
+            println!(
+                "Join节点 {} 已收集到所有分支消息({})，开始合并",
+                ctx.node.id, expected_branches
+            );
+            let branch_messages = messages.drain(..).collect::<Vec<_>>();
+            drop(global_state);
 
-        // 设置超时
-        let timeout_duration = if self.config.timeout > 0 {
-            Duration::from_secs(self.config.timeout)
+            let mut result_msg = Message {
+                id: msg.id,
+                msg_type: "join_result".to_string(),
+                metadata: msg.metadata.clone(),
+                data: json!({
+                    "branches": branch_messages.iter().map(|msg| json!({
+                        "data": msg.data,
+                        "branch_id": msg.metadata.get("branch_id").unwrap_or(&"unknown".to_string())
+                    })).collect::<Vec<_>>()
+                }),
+                timestamp: msg.timestamp,
+            };
+
+            if let Some(branch) = &self.config.success_branch {
+                result_msg
+                    .metadata
+                    .insert("branch_name".into(), branch.clone());
+            }
+
+            println!(
+                "Join节点 {} 合并完成，发送结果消息: {:?}",
+                ctx.node.id, result_msg
+            );
+            ctx.send_next(result_msg.clone()).await?;
+            Ok(result_msg)
         } else {
-            Duration::from_secs(30) // 默认30秒
-        };
-
-        // 等待所有分支执行完成
-        let mut remaining_branches = expected_branches;
-        match timeout(timeout_duration, async {
-            while remaining_branches > 0 {
-                let branch_msg = msg.clone();
-                results.push(WrapperMsg {
-                    msg: branch_msg.clone(),
-                    err: None,
-                    node_id: ctx.node.id.to_string(),
-                });
-                remaining_branches -= 1;
-            }
-            Ok::<(), RuleError>(())
-        })
-        .await
-        {
-            Ok(_) => {
-                // 所有分支都收集完成
-                let mut result_msg = msg.clone();
-
-                let merged_data = serde_json::json!({
-                    "results": results,
-                });
-                result_msg.data = merged_data;
-                // 设置成功分支
-                if let Some(branch) = &self.config.success_branch {
-                    result_msg
-                        .metadata
-                        .insert("branch_name".into(), branch.clone());
-                }
-                ctx.send_next(result_msg.clone()).await?;
-                Ok(result_msg)
-            }
-            Err(_) => {
-                // 设置失败分支
-                if let Some(branch) = &self.config.error_branch {
-                    msg.metadata.insert("branch_name".into(), branch.clone());
-                }
-                // 超时处理
-                ctx.send_next(msg.clone()).await?;
-                Ok(msg)
-            }
+            println!(
+                "Join节点 {} 等待更多分支消息 ({}/{})",
+                ctx.node.id,
+                messages.len(),
+                expected_branches
+            );
+            Ok(msg)
         }
     }
 

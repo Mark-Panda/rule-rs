@@ -2288,6 +2288,7 @@ dependencies = [
  "cron",
  "futures",
  "jsonschema",
+ "lazy_static",
  "pretty_assertions",
  "prometheus",
  "redis",
