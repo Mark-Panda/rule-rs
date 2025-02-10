@@ -317,8 +317,6 @@ impl RuleEngine {
                     if config.is_object() && config.as_object().unwrap().is_empty() {
                         Ok(Arc::new(JoinNode::new(JoinConfig {
                             timeout: 0,
-                            success_branch: None,
-                            error_branch: None,
                             common: CommonConfig {
                                 node_type: NodeType::Middle,
                             },

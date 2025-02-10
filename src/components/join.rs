@@ -2,12 +2,12 @@ use crate::engine::NodeHandler;
 use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use lazy_static::lazy_static;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Mutex;
+use tracing::debug;
 
 lazy_static! {
     static ref GLOBAL_JOIN_STATE: Arc<Mutex<HashMap<String, Vec<Message>>>> =
@@ -18,8 +18,6 @@ lazy_static! {
 pub struct JoinConfig {
     #[serde(default)]
     pub timeout: u64, // 超时时间(秒)
-    pub success_branch: Option<String>, // 成功分支名称
-    pub error_branch: Option<String>,   // 失败分支名称
     #[serde(flatten)]
     pub common: CommonConfig,
 }
@@ -31,14 +29,13 @@ impl Default for JoinConfig {
                 node_type: NodeType::Middle,
             },
             timeout: 30,
-            success_branch: None,
-            error_branch: None,
         }
     }
 }
 
 #[derive(Debug)]
 pub struct JoinNode {
+    #[allow(dead_code)]
     config: JoinConfig,
 }
 
@@ -73,53 +70,52 @@ impl NodeHandler for JoinNode {
             .entry(msg.id.to_string())
             .or_insert_with(Vec::new);
 
-        println!(
+        debug!(
             "Join节点 {} 当前状态 - 已收集消息数: {}",
             ctx.node.id,
             messages.len()
         );
         messages.push(msg.clone());
-        println!(
+        debug!(
             "Join节点 {} 收集到新的分支消息后 - 消息数: {}",
             ctx.node.id,
             messages.len()
         );
 
         if messages.len() >= expected_branches {
-            println!(
+            debug!(
                 "Join节点 {} 已收集到所有分支消息({})，开始合并",
                 ctx.node.id, expected_branches
             );
             let branch_messages = messages.drain(..).collect::<Vec<_>>();
             drop(global_state);
 
-            let mut result_msg = Message {
+            let result_msg = Message {
                 id: msg.id,
                 msg_type: "join_result".to_string(),
                 metadata: msg.metadata.clone(),
                 data: json!({
                     "branches": branch_messages.iter().map(|msg| json!({
                         "data": msg.data,
-                        "branch_id": msg.metadata.get("branch_id").unwrap_or(&"unknown".to_string())
                     })).collect::<Vec<_>>()
                 }),
                 timestamp: msg.timestamp,
             };
 
-            if let Some(branch) = &self.config.success_branch {
-                result_msg
-                    .metadata
-                    .insert("branch_name".into(), branch.clone());
-            }
+            // if let Some(branch) = &self.config.success_branch {
+            //     result_msg
+            //         .metadata
+            //         .insert("branch_name".into(), branch.clone());
+            // }
 
-            println!(
+            debug!(
                 "Join节点 {} 合并完成，发送结果消息: {:?}",
                 ctx.node.id, result_msg
             );
             ctx.send_next(result_msg.clone()).await?;
             Ok(result_msg)
         } else {
-            println!(
+            debug!(
                 "Join节点 {} 等待更多分支消息 ({}/{})",
                 ctx.node.id,
                 messages.len(),
