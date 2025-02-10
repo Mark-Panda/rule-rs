@@ -94,6 +94,7 @@ impl Default for RedisConfig {
     }
 }
 
+#[derive(Debug)]
 pub struct RedisNode {
     config: RedisConfig,
     client: Client,
@@ -146,7 +147,7 @@ impl RedisNode {
 
 #[async_trait]
 impl NodeHandler for RedisNode {
-    async fn handle<'a>(&self, _ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(&'a self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
         let mut conn = self
             .client
             .get_multiplexed_async_connection()
@@ -445,33 +446,25 @@ impl NodeHandler for RedisNode {
             }
         }?;
 
-        // 根据执行结果选择分支
-        if result.is_some() {
-            let mut new_msg = msg; // 创建新的可变消息
-                                   // 设置成功分支
+        // 构造返回消息
+        let mut new_msg = msg;
+        if let Some(value) = result {
+            new_msg.data = value;
+            // 设置成功分支
             if let Some(branch) = &self.config.success_branch {
-                new_msg
-                    .metadata
-                    .insert("branch_name".into(), branch.clone());
+                new_msg.metadata.insert("branch_name".into(), branch.clone());
             }
-            // 更新消息数据
-            if let Some(value) = result {
-                new_msg.data = value;
-            }
-            Ok(new_msg)
         } else {
-            let mut new_msg = msg; // 创建新的可变消息
-            new_msg
-                .metadata
-                .insert("error".into(), "Redis命令执行失败".to_string());
             // 设置失败分支
             if let Some(branch) = &self.config.error_branch {
-                new_msg
-                    .metadata
-                    .insert("branch_name".into(), branch.clone());
+                new_msg.metadata.insert("branch_name".into(), branch.clone());
             }
-            Ok(new_msg)
         }
+
+        // 发送到下一个节点
+        ctx.send_next(new_msg.clone()).await?;
+        
+        Ok(new_msg)
     }
 
     fn get_descriptor(&self) -> NodeDescriptor {

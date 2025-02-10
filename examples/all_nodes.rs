@@ -8,6 +8,13 @@ const RULE_CHAIN: &str = r#"{
     "root": true,
     "nodes": [
         {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
+                "type_name": "start",
+                "config": {},
+                "layout": { "x": 50, "y": 100 }
+        },
+        {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
             "type_name": "script",
             "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
@@ -35,15 +42,6 @@ const RULE_CHAIN: &str = r#"{
             "layout": { "x": 500, "y": 100 }
         },
         {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3305",
-            "type_name": "delay",
-            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
-            "config": {
-                "delay_ms": 1000
-            },
-            "layout": { "x": 700, "y": 100 }
-        },
-        {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3306",
             "type_name": "log",
             "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
@@ -55,6 +53,11 @@ const RULE_CHAIN: &str = r#"{
     ],
     "connections": [
         {
+            "from_id": "00000000-0000-0000-0000-000000000000",
+            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
+            "type_name": "success"
+        },
+        {
             "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
             "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
             "type_name": "success"
@@ -62,11 +65,6 @@ const RULE_CHAIN: &str = r#"{
         {
             "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
             "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304",
-            "type_name": "success"
-        },
-        {
-            "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304",
-            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3305",
             "type_name": "success"
         },
         {

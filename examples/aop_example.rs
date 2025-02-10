@@ -276,6 +276,13 @@ const CHAIN_A: &str = r#"{
     "root": true,
     "nodes": [
         {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
+                "type_name": "start",
+                "config": {},
+                "layout": { "x": 50, "y": 100 }
+        },
+        {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
             "type_name": "script",
             "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
@@ -297,6 +304,11 @@ const CHAIN_A: &str = r#"{
     ],
     "connections": [
         {
+            "from_id": "00000000-0000-0000-0000-000000000000",
+            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
+            "type_name": "success"
+        },
+        {
             "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
             "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
             "type_name": "success"
@@ -316,6 +328,13 @@ const ERROR_CHAIN: &str = r#"{
     "root": true,
     "nodes": [
         {
+            "id": "00000000-0000-0000-0000-000000000000",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3401",
+            "type_name": "start",
+            "config": {},
+            "layout": { "x": 50, "y": 100 }
+        },
+        {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3402",
             "type_name": "script",
             "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3401",
@@ -325,7 +344,13 @@ const ERROR_CHAIN: &str = r#"{
             "layout": { "x": 100, "y": 100 }
         }
     ],
-    "connections": [],
+    "connections": [
+        {
+            "from_id": "00000000-0000-0000-0000-000000000000",
+            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3402",
+            "type_name": "success"
+        }
+    ],
     "metadata": {
         "version": 1,
         "created_at": 1679800000,

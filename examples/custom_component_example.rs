@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use rule_rs::engine::NodeHandler;
-use rule_rs::types::{CommonConfig, NodeContext, NodeDescriptor, NodeType, RuleError};
-use rule_rs::{engine::rule::RuleEngineTrait, Message, RuleEngine};
+use rule_rs::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
+use rule_rs::{engine::rule::RuleEngineTrait, RuleEngine};
 use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
@@ -13,23 +13,35 @@ const RULE_CHAIN: &str = r#"{
     "root": true,
     "nodes": [
         {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
-            "type_name": "custom/upper",
+            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
+            "type_name": "start",
             "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {},
             "layout": { "x": 100, "y": 100 }
         },
         {
+            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
+            "type_name": "custom/upper",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
+            "config": {},
+            "layout": { "x": 300, "y": 100 }
+        },
+        {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
             "type_name": "log",
-            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301", 
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
                 "template": "转换结果: ${msg.data}"
             },
-            "layout": { "x": 300, "y": 100 }
+            "layout": { "x": 500, "y": 100 }
         }
     ],
     "connections": [
+        {
+            "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
+            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
+            "type_name": "success"
+        },
         {
             "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
             "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
@@ -59,6 +71,7 @@ impl Default for UpperConfig {
     }
 }
 
+#[derive(Debug)]
 pub struct UpperNode {
     #[allow(dead_code)]
     config: UpperConfig,
@@ -72,7 +85,11 @@ impl UpperNode {
 
 #[async_trait]
 impl NodeHandler for UpperNode {
-    async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(
+        &'a self,
+        ctx: NodeContext<'a>,
+        msg: Message,
+    ) -> Result<Message, RuleError> {
         // 将消息内容转换为大写
         if let Some(text) = msg.data.as_str() {
             let upper_text = text.to_uppercase();

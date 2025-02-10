@@ -35,6 +35,7 @@ impl Default for RestClientConfig {
     }
 }
 
+#[derive(Debug)]
 pub struct RestClientNode {
     config: RestClientConfig,
     client: Client,
@@ -118,12 +119,13 @@ impl RestClientNode {
 
 #[async_trait]
 impl NodeHandler for RestClientNode {
-    async fn handle<'a>(&self, _ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(&'a self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
         let mut msg = msg;
 
         // 发送请求并处理结果
         match self.make_request(&msg).await {
             Ok(response_data) => {
+                println!("请求成功: {:?}", response_data);
                 // 请求成功
                 msg.data = response_data;
                 msg.msg_type = "http_response".to_string();
@@ -133,9 +135,12 @@ impl NodeHandler for RestClientNode {
                     msg.metadata.insert("branch_name".into(), branch.clone());
                 }
 
+                // 发送到成功分支的下一个节点
+                ctx.send_next(msg.clone()).await?;
                 Ok(msg)
             }
             Err(e) => {
+                println!("请求失败: {:?}", e);
                 // 请求失败
                 msg.metadata.insert("error".into(), e.to_string());
 
@@ -144,7 +149,9 @@ impl NodeHandler for RestClientNode {
                     msg.metadata.insert("branch_name".into(), branch.clone());
                 }
 
-                Ok(msg) // 注意这里返回 Ok 而不是 Err
+                // 发送到失败分支的下一个节点
+                ctx.send_next(msg.clone()).await?;
+                Ok(msg)
             }
         }
     }

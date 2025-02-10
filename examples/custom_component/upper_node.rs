@@ -19,7 +19,9 @@ impl Default for UpperConfig {
     }
 }
 
+#[derive(Debug)]
 pub struct UpperNode {
+    #[allow(dead_code)]
     config: UpperConfig,
 }
 
@@ -31,7 +33,11 @@ impl UpperNode {
 
 #[async_trait]
 impl NodeHandler for UpperNode {
-    async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(
+        &'a self,
+        ctx: NodeContext<'a>,
+        msg: Message,
+    ) -> Result<Message, RuleError> {
         // 将消息内容转换为大写
         if let Some(text) = msg.data.as_str() {
             let upper_text = text.to_uppercase();

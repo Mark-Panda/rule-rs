@@ -24,6 +24,7 @@ impl Default for SubchainConfig {
     }
 }
 
+#[derive(Debug)]
 pub struct SubchainNode {
     config: SubchainConfig,
 }
@@ -36,8 +37,7 @@ impl SubchainNode {
 
 #[async_trait]
 impl NodeHandler for SubchainNode {
-    async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
-        // Use the new method to get the subchain
+    async fn handle<'a>(&'a self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
         let subchain = ctx
             .engine
             .get_chain(self.config.chain_id)
@@ -47,8 +47,13 @@ impl NodeHandler for SubchainNode {
             })?;
 
         // 创建子规则链上下文
-        let mut sub_ctx = ExecutionContext::new(msg);
-        ctx.engine.execute_chain(&subchain, &mut sub_ctx).await
+        let mut sub_ctx = ExecutionContext::new(msg.clone());
+        let result = ctx.engine.execute_chain(&subchain, &mut sub_ctx).await?;
+
+        // 发送到下一个节点
+        ctx.send_next(result.clone()).await?;
+        
+        Ok(result)
     }
 
     fn get_descriptor(&self) -> NodeDescriptor {

@@ -102,15 +102,14 @@ async fn main() -> Result<(), RuleError> {
         handles.push(handle);
     }
 
-    // 尝试在规则链执行过程中删除它
-    tokio::spawn(async move {
-        tokio::time::sleep(Duration::from_millis(500)).await;
-        println!("尝试删除规则链");
-        match engine.remove_chain(chain_id).await {
-            Ok(_) => println!("规则链删除成功"),
-            Err(e) => println!("规则链删除失败: {}", e),
-        }
-    });
+    // 在删除规则链之前等待一小段时间
+    tokio::time::sleep(Duration::from_secs(1)).await;
+
+    println!("尝试删除规则链");
+    match engine.remove_chain(chain_id).await {
+        Ok(_) => println!("规则链删除成功"),
+        Err(e) => println!("规则链删除失败: {:?}", e),
+    }
 
     // 等待所有任务完成
     for handle in handles {

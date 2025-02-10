@@ -22,6 +22,7 @@ impl Default for LogConfig {
     }
 }
 
+#[derive(Debug)]
 pub struct LogNode {
     config: LogConfig,
 }
@@ -39,15 +40,9 @@ impl LogNode {
         // 替换数据中的变量
         if let Some(obj) = msg.data.as_object() {
             for (key, value) in obj {
-                println!("key: {}", key);
-                println!("value: {}", value);
                 let placeholder = format!("${{msg.data.{}}}", key);
                 let placeholder_without_markers = format!("msg.data.{}", key);
                 let result_without_markers = result.replace("${", "").replace("}", ""); // 去掉结果中的 ${}
-                println!(
-                    "placeholder_without_markers: {}, result: {}",
-                    placeholder_without_markers, result_without_markers
-                );
 
                 if result_without_markers.contains(&placeholder_without_markers) {
                     let value_str = if value.is_object() || value.is_array() {
@@ -84,7 +79,11 @@ impl LogNode {
 
 #[async_trait]
 impl NodeHandler for LogNode {
-    async fn handle<'a>(&self, _ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(
+        &'a self,
+        _ctx: NodeContext<'a>,
+        msg: Message,
+    ) -> Result<Message, RuleError> {
         // 格式化并输出日志
         let log_message = self.format_message(&msg);
         info!("log组件输出: {}", log_message);

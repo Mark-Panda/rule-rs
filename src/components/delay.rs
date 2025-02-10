@@ -35,6 +35,7 @@ impl Default for DelayConfig {
 }
 
 /// 延迟处理节点
+#[derive(Debug)]
 pub struct DelayNode {
     config: DelayConfig,
 }
@@ -47,13 +48,17 @@ impl DelayNode {
 
 #[async_trait]
 impl NodeHandler for DelayNode {
-    async fn handle<'a>(&self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(
+        &'a self,
+        ctx: NodeContext<'a>,
+        msg: Message,
+    ) -> Result<Message, RuleError> {
         if self.config.periodic {
             let mut count = 0;
             loop {
                 sleep(Duration::from_millis(self.config.delay_ms)).await;
-                let msg_clone = msg.clone();
-                ctx.send_next(msg_clone).await?;
+                // 发送到下一个节点
+                ctx.send_next(msg.clone()).await?;
 
                 count += 1;
                 if self.config.period_count > 0 && count >= self.config.period_count {
@@ -62,6 +67,8 @@ impl NodeHandler for DelayNode {
             }
         } else {
             sleep(Duration::from_millis(self.config.delay_ms)).await;
+            // 发送到下一个节点
+            ctx.send_next(msg.clone()).await?;
         }
         Ok(msg)
     }

@@ -67,6 +67,13 @@ const RULE_CHAIN: &str = r#"{
     "root": true,
     "nodes": [
         {
+            "id": "00000000-0000-0000-0000-000000000000",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
+            "type_name": "start",
+            "config": {},
+            "layout": { "x": 50, "y": 100 }
+        },
+        {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
             "type_name": "rest_client",
             "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
@@ -106,6 +113,11 @@ const RULE_CHAIN: &str = r#"{
         }
     ],
     "connections": [
+        {
+            "from_id": "00000000-0000-0000-0000-000000000000",
+            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
+            "type_name": "success"
+        },
         {
             "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
             "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",

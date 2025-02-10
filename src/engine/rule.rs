@@ -1,10 +1,13 @@
-use crate::aop::{InterceptorManager, LoggingInterceptor, MessageInterceptor, NodeInterceptor};
+use crate::aop::{
+    InterceptorManager, LoggingInterceptor, MessageInterceptor, MessageLoggingInterceptor,
+    NodeInterceptor,
+};
 use crate::components::{
-    DelayConfig, DelayNode, FilterConfig, FilterNode, JsFunctionConfig, JsFunctionNode, LogConfig,
-    LogNode, RedisConfig, RedisNode, RedisOperation, RestClientConfig, RestClientNode,
-    ScheduleConfig, ScheduleNode, ScriptConfig, ScriptNode, SubchainConfig, SubchainNode,
-    SwitchConfig, SwitchNode, TransformConfig, TransformJsConfig, TransformJsNode, TransformNode,
-    WeatherConfig, WeatherNode,
+    DelayConfig, DelayNode, FilterConfig, FilterNode, ForkNode, JoinConfig, JoinNode,
+    JsFunctionConfig, JsFunctionNode, LogConfig, LogNode, RedisConfig, RedisNode, RedisOperation,
+    RestClientConfig, RestClientNode, ScheduleConfig, ScheduleNode, ScriptConfig, ScriptNode,
+    StartConfig, StartNode, SubchainConfig, SubchainNode, SwitchConfig, SwitchNode,
+    TransformConfig, TransformJsConfig, TransformJsNode, TransformNode, WeatherConfig, WeatherNode,
 };
 use crate::engine::{NodeFactory, NodeHandler, NodeRegistry, VersionManager};
 use crate::types::{
@@ -108,6 +111,18 @@ impl RuleEngine {
                     } else {
                         let config: LogConfig = serde_json::from_value(config)?;
                         Ok(Arc::new(LogNode::new(config)) as Arc<dyn NodeHandler>)
+                    }
+                }),
+            ),
+            (
+                "start",
+                Arc::new(|config| {
+                    if config.is_object() && config.as_object().unwrap().is_empty() {
+                        Ok(Arc::new(StartNode::new(StartConfig::default()))
+                            as Arc<dyn NodeHandler>)
+                    } else {
+                        let config: StartConfig = serde_json::from_value(config)?;
+                        Ok(Arc::new(StartNode::new(config)) as Arc<dyn NodeHandler>)
                     }
                 }),
             ),
@@ -292,6 +307,25 @@ impl RuleEngine {
                     }
                 }),
             ),
+            (
+                "fork",
+                Arc::new(|_config| Ok(Arc::new(ForkNode::new()) as Arc<dyn NodeHandler>)),
+            ),
+            (
+                "join",
+                Arc::new(|config| {
+                    if config.is_object() && config.as_object().unwrap().is_empty() {
+                        Ok(Arc::new(JoinNode::new(JoinConfig {
+                            common: CommonConfig {
+                                node_type: NodeType::Middle,
+                            },
+                        })) as Arc<dyn NodeHandler>)
+                    } else {
+                        let config: JoinConfig = serde_json::from_value(config)?;
+                        Ok(Arc::new(JoinNode::new(config)) as Arc<dyn NodeHandler>)
+                    }
+                }),
+            ),
         ];
 
         // 直接注册所有工厂
@@ -307,14 +341,37 @@ impl RuleEngine {
             execution_counters: Arc::new(RwLock::new(HashMap::new())),
         };
 
-        // 注册日志拦截器
-        engine
-            .interceptor_manager
-            .write()
-            .await
-            .register_node_interceptor(Arc::new(LoggingInterceptor));
+        // 注册默认拦截器
+        {
+            let mut manager = engine.interceptor_manager.write().await;
+            // 注册节点日志拦截器
+            manager.register_node_interceptor(Arc::new(LoggingInterceptor));
+            // 注册消息日志拦截器
+            manager.register_msg_interceptor(Arc::new(MessageLoggingInterceptor));
+        }
 
         engine
+    }
+
+    // 增加执行计数
+    async fn increment_counter(&self, chain_id: Uuid) {
+        let counter = {
+            let mut counters = self.execution_counters.write().await;
+            counters
+                .entry(chain_id)
+                .or_insert_with(|| Arc::new(Mutex::new(0)))
+                .clone()
+        };
+        let mut count = counter.lock().await;
+        *count += 1;
+    }
+
+    // 减少执行计数
+    async fn decrement_counter(&self, chain_id: Uuid) {
+        if let Some(counter) = self.execution_counters.read().await.get(&chain_id) {
+            let mut count = counter.lock().await;
+            *count = count.saturating_sub(1);
+        }
     }
 }
 
@@ -577,6 +634,15 @@ impl RuleEngineTrait for RuleEngine {
         let chain: RuleChain =
             serde_json::from_str(content).map_err(|e| RuleError::ConfigError(e.to_string()))?;
 
+        let start_node = chain
+            .get_start_node()?
+            .ok_or_else(|| RuleError::ConfigError("规则链没有起始节点".to_string()))?;
+        let node_type = start_node.get_node_type()?;
+        if node_type != NodeType::Head {
+            return Err(RuleError::ConfigError(
+                "规则链必须以header节点开始".to_string(),
+            ));
+        }
         chain.validate()?;
 
         // 启用循环依赖检查
@@ -625,11 +691,10 @@ impl RuleEngineTrait for RuleEngine {
         // 消息处理前拦截
         manager.before_process(&msg).await?;
 
-        let chains = self.chains.read().await;
-
         // 查找指定的规则链
-        let chain = chains
-            .get(&chain_id)
+        let chain = self
+            .get_chain(chain_id)
+            .await
             .ok_or(RuleError::ChainNotFound(chain_id))?;
 
         // 检查是否为根规则链
@@ -640,11 +705,9 @@ impl RuleEngineTrait for RuleEngine {
             )));
         }
 
-        // 创建执行上下文
+        // 创建执行上下文并执行规则链
         let mut ctx = ExecutionContext::new(msg.clone());
-
-        // 执行规则链
-        let result = self.execute_chain(chain, &mut ctx).await?;
+        let result = self.execute_chain(&chain, &mut ctx).await?;
 
         // 消息处理后拦截
         manager.after_process(&msg).await?;
@@ -657,44 +720,23 @@ impl RuleEngineTrait for RuleEngine {
         chain: &RuleChain,
         ctx: &mut ExecutionContext,
     ) -> Result<Message, RuleError> {
-        // 获取或创建计数器
-        let counter = {
-            let mut counters = self.execution_counters.write().await;
-            counters
-                .entry(chain.id)
-                .or_insert_with(|| Arc::new(Mutex::new(0)))
-                .clone()
-        };
-
         // 增加计数
-        {
-            let mut count = counter.lock().await;
-            *count += 1;
-        }
+        self.increment_counter(chain.id).await;
 
+        // 使用 defer 模式确保计数器一定会减少
         let result = async {
-            let mut current_node = chain.get_start_node()?;
-            while let Some(node) = current_node {
-                let engine_trait_object =
-                    Arc::new(self.clone()) as Arc<dyn RuleEngineTrait + Send + Sync>;
-                let node_ctx = NodeContext::new(node, ctx, engine_trait_object);
-                ctx.msg = self.execute_node(node, &node_ctx, ctx.msg.clone()).await?;
-                current_node = chain.get_next_node(&node.id, ctx)?;
-            }
-            Ok(ctx.msg.clone())
+            let start_node = chain
+                .get_start_node()?
+                .ok_or_else(|| RuleError::ConfigError("规则链没有起始节点".to_string()))?;
+
+            let node_ctx = NodeContext::new(start_node, ctx, Arc::new(self.clone()));
+            self.execute_node(start_node, &node_ctx, ctx.msg.clone())
+                .await
         }
         .await;
 
         // 减少计数
-        {
-            let mut count = counter.lock().await;
-            *count = count.saturating_sub(1);
-            // 如果计数为0,从map中移除
-            if *count == 0 {
-                let mut counters = self.execution_counters.write().await;
-                counters.remove(&chain.id);
-            }
-        }
+        self.decrement_counter(chain.id).await;
 
         result
     }
@@ -706,7 +748,6 @@ impl RuleEngineTrait for RuleEngine {
         msg: Message,
     ) -> Result<Message, RuleError> {
         let manager = self.interceptor_manager.read().await;
-
         // 获取节点处理器
         let handler = self
             .node_registry
@@ -755,52 +796,82 @@ impl RuleEngineTrait for RuleEngine {
 
     /// 删除规则链
     async fn remove_chain(&self, id: Uuid) -> Result<(), RuleError> {
-        // 获取计数器并检查
-        let counter = {
-            let counters = self.execution_counters.read().await;
-            counters.get(&id).cloned()
-        };
-
-        if let Some(counter) = &counter {
-            let count = *counter.lock().await;
-            if count > 0 {
-                return Err(RuleError::ConfigError(format!(
-                    "无法删除正在执行的规则链 {}, 当前有 {} 个执行实例",
-                    id, count
-                )));
+        // 先用读锁检查规则链是否存在
+        {
+            let chains = self.chains.read().await;
+            if !chains.contains_key(&id) {
+                return Err(RuleError::ChainNotFound(id));
             }
-        }
 
-        let mut chains = self.chains.write().await;
-
-        // 再次检查计数,确保删除时没有新的执行
-        if let Some(counter) = &counter {
-            let count = *counter.lock().await;
-            if count > 0 {
-                return Err(RuleError::ConfigError(format!(
-                    "无法删除正在执行的规则链 {}, 当前有 {} 个执行实例",
-                    id, count
-                )));
-            }
-        }
-
-        // 检查引用关系
-        for chain in chains.values() {
-            for node in &chain.nodes {
-                if let Ok(config) = serde_json::from_value::<SubchainConfig>(node.config.clone()) {
-                    if config.chain_id == id {
-                        return Err(RuleError::ConfigError(format!(
-                            "规则链 {} 被规则链 {} 引用,无法删除",
-                            id, chain.id
-                        )));
+            // 检查引用关系
+            for chain in chains.values() {
+                for node in &chain.nodes {
+                    if let Ok(config) =
+                        serde_json::from_value::<SubchainConfig>(node.config.clone())
+                    {
+                        if config.chain_id == id {
+                            return Err(RuleError::ConfigError(format!(
+                                "规则链 {} 被规则链 {} 引用,无法删除",
+                                id, chain.id
+                            )));
+                        }
                     }
                 }
             }
         }
 
-        chains
-            .remove(&id)
-            .ok_or_else(|| RuleError::ChainNotFound(id))?;
+        // 等待执行完成，最多等待 5 秒
+        let start_time = std::time::Instant::now();
+        let timeout = std::time::Duration::from_secs(5);
+
+        while start_time.elapsed() < timeout {
+            let has_running_instances = {
+                let counters = self.execution_counters.read().await;
+                if let Some(counter) = counters.get(&id) {
+                    let count = counter.lock().await;
+                    *count > 0
+                } else {
+                    false
+                }
+            };
+
+            if !has_running_instances {
+                break;
+            }
+
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        }
+
+        // 再次检查是否还有运行实例
+        let has_running_instances = {
+            let counters = self.execution_counters.read().await;
+            if let Some(counter) = counters.get(&id) {
+                let count = counter.lock().await;
+                *count > 0
+            } else {
+                false
+            }
+        };
+
+        if has_running_instances {
+            return Err(RuleError::ConfigError(format!(
+                "无法删除正在执行的规则链 {}, 等待超时",
+                id
+            )));
+        }
+
+        // 获取写锁并删除
+        {
+            let mut chains = self.chains.write().await;
+            chains.remove(&id);
+        }
+
+        // 清理计数器
+        {
+            let mut counters = self.execution_counters.write().await;
+            counters.remove(&id);
+        }
+
         Ok(())
     }
 
@@ -894,6 +965,8 @@ impl RuleChain {
         match node.type_name.as_str() {
             "log" => Ok(NodeType::Tail),
             "delay" => Ok(NodeType::Head),
+            "schedule" => Ok(NodeType::Head),
+            "start" => Ok(NodeType::Head),
             _ => Ok(NodeType::Middle),
         }
     }
