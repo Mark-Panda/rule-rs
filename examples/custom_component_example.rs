@@ -40,12 +40,12 @@ const RULE_CHAIN: &str = r#"{
         {
             "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
-            "type_name": "Success"
+            "type_name": "success"
         },
         {
             "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
             "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
-            "type_name": "Success"
+            "type_name": "success"
         }
     ],
     "metadata": {

@@ -8,13 +8,20 @@ const RULE_CHAIN: &str = r#"{
     "root": true,
     "nodes": [
         {
+            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3300",
+            "type_name": "start",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
+            "config": {},
+            "layout": { "x": 50, "y": 100 }
+        },
+        {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
             "type_name": "script",
             "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
                 "script": "return { value: msg.data.value + 1 };"
             },
-            "layout": { "x": 100, "y": 100 }
+            "layout": { "x": 200, "y": 100 }
         },
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
@@ -23,10 +30,15 @@ const RULE_CHAIN: &str = r#"{
             "config": {
                 "template": "处理结果: ${msg.data.value}"
             },
-            "layout": { "x": 300, "y": 100 }
+            "layout": { "x": 350, "y": 100 }
         }
     ],
     "connections": [
+        {
+            "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3300",
+            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
+            "type_name": "success"
+        },
         {
             "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
             "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",

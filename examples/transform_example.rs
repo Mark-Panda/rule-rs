@@ -17,6 +17,13 @@ async fn main() {
         "root": true,
         "nodes": [
             {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "type_name": "start",
+                "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
+                "config": {},
+                "layout": { "x": 50, "y": 100 }
+            },
+            {
                 "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
                 "type_name": "transform",
                 "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
@@ -34,7 +41,13 @@ async fn main() {
                 }
             }
         ],
-        "connections": [],
+        "connections": [
+            {
+                "from_id": "00000000-0000-0000-0000-000000000000",
+                "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
+                "type_name": "success"
+            }
+        ],
         "metadata": {
             "version": 1,
             "created_at": 1625097600000,

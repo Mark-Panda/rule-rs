@@ -634,6 +634,15 @@ impl RuleEngineTrait for RuleEngine {
         let chain: RuleChain =
             serde_json::from_str(content).map_err(|e| RuleError::ConfigError(e.to_string()))?;
 
+        let start_node = chain
+            .get_start_node()?
+            .ok_or_else(|| RuleError::ConfigError("规则链没有起始节点".to_string()))?;
+        let node_type = start_node.get_node_type()?;
+        if node_type != NodeType::Head {
+            return Err(RuleError::ConfigError(
+                "规则链必须以header节点开始".to_string(),
+            ));
+        }
         chain.validate()?;
 
         // 启用循环依赖检查
@@ -956,6 +965,8 @@ impl RuleChain {
         match node.type_name.as_str() {
             "log" => Ok(NodeType::Tail),
             "delay" => Ok(NodeType::Head),
+            "schedule" => Ok(NodeType::Head),
+            "start" => Ok(NodeType::Head),
             _ => Ok(NodeType::Middle),
         }
     }
