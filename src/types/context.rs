@@ -64,7 +64,6 @@ impl<'a> NodeContext<'a> {
 
         // 如果有下一个节点，则执行
         if let Some(node) = next_node {
-            println!("发送给下一节点: {}", node.id);
             let ctx = NodeContext::new(node, &exec_ctx, self.engine.clone());
             self.engine.execute_node(node, &ctx, exec_ctx.msg).await?;
         }
@@ -131,11 +130,8 @@ impl<'a> NodeContext<'a> {
                 .cmp(&b.parse::<usize>().unwrap())
         });
 
-        println!("获取分支结果，排序后的branch_ids: {:?}", branch_ids);
-
         for branch_id in branch_ids {
             if let Some(msg) = results.get(branch_id) {
-                println!("获取到分支 {} 的结果: {:?}", branch_id, msg);
                 branch_msgs.push(Ok(msg.clone()));
             }
         }

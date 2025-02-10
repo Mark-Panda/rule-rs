@@ -69,9 +69,7 @@ async fn main() {
                 "chain_id": "01234567-89ab-cdef-0123-456789abcdef",
                 "type_name": "join",
                 "type": "join",
-                "config": {
-                    "timeout": 5
-                },
+                "config": {},
                 "layout": {"x": 500, "y": 100}
             },
             {
@@ -80,15 +78,6 @@ async fn main() {
                 "chain_id": "01234567-89ab-cdef-0123-456789abcdef",
                 "config": {
                     "template": "正确处理消息"
-                },
-                "layout": { "x": 100, "y": 100 }
-            },
-            {
-                "id": "66666666-6666-6666-6666-666666666666",
-                "type_name": "log",
-                "chain_id": "01234567-89ab-cdef-0123-456789abcdef",
-                "config": {
-                    "template": "错误处理消息"
                 },
                 "layout": { "x": 100, "y": 100 }
             }

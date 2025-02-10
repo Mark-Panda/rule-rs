@@ -16,8 +16,6 @@ lazy_static! {
 
 #[derive(Debug, Deserialize)]
 pub struct JoinConfig {
-    #[serde(default)]
-    pub timeout: u64, // 超时时间(秒)
     #[serde(flatten)]
     pub common: CommonConfig,
 }
@@ -28,7 +26,6 @@ impl Default for JoinConfig {
             common: CommonConfig {
                 node_type: NodeType::Middle,
             },
-            timeout: 30,
         }
     }
 }
@@ -70,29 +67,14 @@ impl NodeHandler for JoinNode {
             .entry(msg.id.to_string())
             .or_insert_with(Vec::new);
 
-        debug!(
-            "Join节点 {} 当前状态 - 已收集消息数: {}",
-            ctx.node.id,
-            messages.len()
-        );
         messages.push(msg.clone());
-        debug!(
-            "Join节点 {} 收集到新的分支消息后 - 消息数: {}",
-            ctx.node.id,
-            messages.len()
-        );
-
         if messages.len() >= expected_branches {
-            debug!(
-                "Join节点 {} 已收集到所有分支消息({})，开始合并",
-                ctx.node.id, expected_branches
-            );
             let branch_messages = messages.drain(..).collect::<Vec<_>>();
             drop(global_state);
 
             let result_msg = Message {
                 id: msg.id,
-                msg_type: "join_result".to_string(),
+                msg_type: msg.msg_type,
                 metadata: msg.metadata.clone(),
                 data: json!({
                     "branches": branch_messages.iter().map(|msg| json!({
@@ -101,12 +83,6 @@ impl NodeHandler for JoinNode {
                 }),
                 timestamp: msg.timestamp,
             };
-
-            // if let Some(branch) = &self.config.success_branch {
-            //     result_msg
-            //         .metadata
-            //         .insert("branch_name".into(), branch.clone());
-            // }
 
             debug!(
                 "Join节点 {} 合并完成，发送结果消息: {:?}",

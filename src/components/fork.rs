@@ -18,23 +18,25 @@ impl NodeHandler for ForkNode {
         ctx: NodeContext<'a>,
         msg: Message,
     ) -> Result<Message, RuleError> {
-        let connections = ctx.get_next_connections("Success").await?;
+        let chain = ctx
+            .engine
+            .get_chain(ctx.node.chain_id)
+            .await
+            .ok_or(RuleError::ChainNotFound(ctx.node.chain_id))?;
+
+        let connections = chain
+            .connections
+            .iter()
+            .filter(|conn| conn.from_id == ctx.node.id)
+            .collect::<Vec<_>>();
 
         // 创建分支消息
         let mut branch_msgs = Vec::with_capacity(connections.len());
         for (i, _) in connections.iter().enumerate() {
-            let mut branch_msg = msg.clone();
             let branch_id = i.to_string();
-            branch_msg
-                .metadata
-                .insert("branch_id".to_string(), branch_id.clone());
-            branch_msg
-                .metadata
-                .insert("is_branch".to_string(), "true".to_string());
-
             // 保存分支消息
-            ctx.add_branch_result(branch_id, branch_msg.clone()).await;
-            branch_msgs.push(branch_msg);
+            ctx.add_branch_result(branch_id, msg.clone()).await;
+            branch_msgs.push(msg.clone());
         }
 
         // 并行发送消息到所有分支

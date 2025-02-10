@@ -316,7 +316,6 @@ impl RuleEngine {
                 Arc::new(|config| {
                     if config.is_object() && config.as_object().unwrap().is_empty() {
                         Ok(Arc::new(JoinNode::new(JoinConfig {
-                            timeout: 0,
                             common: CommonConfig {
                                 node_type: NodeType::Middle,
                             },
@@ -740,7 +739,6 @@ impl RuleEngineTrait for RuleEngine {
         msg: Message,
     ) -> Result<Message, RuleError> {
         let manager = self.interceptor_manager.read().await;
-        println!("准备执行节点 : {:?}", node.id);
         // 获取节点处理器
         let handler = self
             .node_registry
