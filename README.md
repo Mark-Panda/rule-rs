@@ -34,6 +34,8 @@
 | 组件类型     | 说明     | 节点类型 | 示例配置                                |
 | ------------ | -------- | -------- | --------------------------------------- |
 | start        | 起始节点 | Head     | `{}`                                    |
+| delay        | 延时处理 | Head     | `{"delay_ms": 1000}`                    |
+| schedule     | 定时任务 | Head     | `{"cron": "*/5 * * * * *"}`             |
 | fork         | 分支节点 | Head     | `{}`                                    |
 | join         | 汇聚节点 | Tail     | `{}`                                    |
 | log          | 日志输出 | Tail     | `{"template": "${msg.data}"}`           |
@@ -41,10 +43,7 @@
 | filter       | 消息过滤 | Middle   | `{"condition": "value > 10"}`           |
 | transform    | 数据转换 | Middle   | `{"template": {"key": "${msg.value}"}}` |
 | transform_js | JS转换   | Middle   | `{"script": "return {...msg};"}`        |
-| delay        | 延时处理 | Head     | `{"delay_ms": 1000}`                    |
-| schedule     | 定时任务 | Head     | `{"cron": "*/5 * * * * *"}`             |
 | rest_client  | HTTP请求 | Middle   | `{"url": "http://api.example.com"}`     |
-| weather      | 天气服务 | Middle   | `{"city": "Shanghai"}`                  |
 | subchain     | 子规则链 | Middle   | `{"chain_id": "..."}`                   |
 
 ## 快速开始
