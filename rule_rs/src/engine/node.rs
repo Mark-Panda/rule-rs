@@ -84,12 +84,19 @@ impl NodeRegistry {
         if let Some(factory) = factories.get(type_name) {
             let empty_config = serde_json::Value::Object(serde_json::Map::new());
             if let Ok(node) = factory(empty_config) {
-                let mut descriptor = node.get_descriptor();
-                descriptor.type_name = type_name.to_string();
-                return Some(descriptor);
+                let descriptor = node.get_descriptor();
+                Some(NodeDescriptor {
+                    type_name: type_name.to_string(),
+                    name: descriptor.name,
+                    description: descriptor.description,
+                    node_type: descriptor.node_type,
+                })
+            } else {
+                None
             }
+        } else {
+            None
         }
-        None
     }
 
     pub async fn create_handler(

@@ -6,6 +6,5 @@ pub struct NodeDescriptor {
     pub type_name: String,
     pub name: String,
     pub description: String,
-    #[serde(flatten)]
     pub node_type: NodeType,
 }

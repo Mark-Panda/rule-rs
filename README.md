@@ -130,16 +130,15 @@ engine.register_node_type("custom/type", Arc::new(|config| {
 
 项目包含多个完整的示例:
 
-- examples/simple_rule.rs - 基础规则链示例
-- examples/custom_component.rs - 自定义组件示例  
-- examples/filter_example.rs - 过滤器示例
-- examples/transform_example.rs - 数据转换示例
-- examples/delay_example.rs - 延时处理示例
-- examples/schedule_example.rs - 定时任务示例
-- examples/rest_client.rs - HTTP请求示例
-- examples/weather_service.rs - 天气服务示例
-
-
+- examples/simple_rule - 基础规则链示例
+- examples/custom_component - 自定义大小写转换组件示例  
+- examples/filter_example - 过滤器示例
+- examples/transform_example - 数据转换示例
+- examples/delay_example - 延时处理示例
+- examples/schedule_example - 定时任务示例
+- examples/rest_client - HTTP请求示例
+- examples/weather_service - 自定义天气服务组件示例
+- examples/redis_example - Redis自定义组件示例
 
 ## 规则链示例
 
