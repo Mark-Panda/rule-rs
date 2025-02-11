@@ -16,11 +16,11 @@
 
 规则链中的节点分为三种类型:
 
-| 类型 | 说明 | 限制 |
-|------|------|------|
-| Head | 头节点(如 start/delay/schedule) | 不能被其他节点指向 |
-| Middle | 中间处理节点 | 无特殊限制 |
-| Tail | 尾节点(如 log) | 不能指向其他节点 |
+| 类型   | 说明                            | 限制               |
+| ------ | ------------------------------- | ------------------ |
+| Head   | 头节点(如 start/delay/schedule) | 不能被其他节点指向 |
+| Middle | 中间处理节点                    | 无特殊限制         |
+| Tail   | 尾节点(如 log)                  | 不能指向其他节点   |
 
 ## 规则链规范
 
@@ -31,21 +31,21 @@
 
 ## 内置组件
 
-| 组件类型 | 说明 | 节点类型 | 示例配置 |
-|---------|------|----------|----------|
-| start | 起始节点 | Head | `{}` |
-| fork | 分支节点 | Head | `{}` |
-| join | 汇聚节点 | Tail | `{}` |
-| log | 日志输出 | Tail | `{"template": "${msg.data}"}` |
-| script | JS脚本 | Middle | `{"script": "return msg.data;"}` |
-| filter | 消息过滤 | Middle | `{"condition": "value > 10"}` |
-| transform | 数据转换 | Middle | `{"template": {"key": "${msg.value}"}}` |
-| transform_js | JS转换 | Middle | `{"script": "return {...msg};"}` |
-| delay | 延时处理 | Head | `{"delay_ms": 1000}` |
-| schedule | 定时任务 | Head | `{"cron": "*/5 * * * * *"}` |
-| rest_client | HTTP请求 | Middle | `{"url": "http://api.example.com"}` |
-| weather | 天气服务 | Middle | `{"city": "Shanghai"}` |
-| subchain | 子规则链 | Middle | `{"chain_id": "..."}` |
+| 组件类型     | 说明     | 节点类型 | 示例配置                                |
+| ------------ | -------- | -------- | --------------------------------------- |
+| start        | 起始节点 | Head     | `{}`                                    |
+| fork         | 分支节点 | Head     | `{}`                                    |
+| join         | 汇聚节点 | Tail     | `{}`                                    |
+| log          | 日志输出 | Tail     | `{"template": "${msg.data}"}`           |
+| script       | JS脚本   | Middle   | `{"script": "return msg.data;"}`        |
+| filter       | 消息过滤 | Middle   | `{"condition": "value > 10"}`           |
+| transform    | 数据转换 | Middle   | `{"template": {"key": "${msg.value}"}}` |
+| transform_js | JS转换   | Middle   | `{"script": "return {...msg};"}`        |
+| delay        | 延时处理 | Head     | `{"delay_ms": 1000}`                    |
+| schedule     | 定时任务 | Head     | `{"cron": "*/5 * * * * *"}`             |
+| rest_client  | HTTP请求 | Middle   | `{"url": "http://api.example.com"}`     |
+| weather      | 天气服务 | Middle   | `{"city": "Shanghai"}`                  |
+| subchain     | 子规则链 | Middle   | `{"chain_id": "..."}`                   |
 
 ## 快速开始
 
@@ -139,17 +139,7 @@ engine.register_node_type("custom/type", Arc::new(|config| {
 - examples/rest_client.rs - HTTP请求示例
 - examples/weather_service.rs - 天气服务示例
 
-## 文档
 
-更多详细文档请参考:
-
-- [架构设计](docs/architecture.md)
-- [组件开发指南](docs/component.md) 
-- [API文档](docs/api.md)
-
-## License
-
-MIT License
 
 ## 规则链示例
 
@@ -269,8 +259,6 @@ MIT License
 pub struct CustomConfig {
     pub param1: String,
     pub param2: i32,
-    #[serde(flatten)]
-    pub common: CommonConfig,
 }
 ```
 
@@ -303,6 +291,7 @@ impl NodeHandler for CustomNode {
             type_name: "custom".to_string(),
             name: "自定义节点".to_string(),
             description: "这是一个自定义处理节点".to_string(),
+            node_type: NodeType::Middle,
         }
     }
 }
@@ -324,3 +313,15 @@ impl NodeHandler for CustomNode {
    - 使用异步操作处理 I/O
    - 避免重复计算
    - 合理使用缓存
+
+## 文档
+
+更多详细文档请参考:
+
+- [架构设计](docs/architecture.md)
+- [组件开发指南](docs/component.md) 
+- [API文档](docs/api.md)
+
+## License
+
+MIT License
