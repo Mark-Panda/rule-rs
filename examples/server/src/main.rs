@@ -224,6 +224,10 @@ async fn execute_chain(
     Path(id): Path<Uuid>,
     Json(msg): Json<Message>,
 ) -> impl IntoResponse {
+    // 检查规则链是否存在
+    if state.engine.get_chain(id).await.is_none() {
+        return Json(ApiResponse::<()>::error(404, "Rule chain not found")).into_response();
+    }
     // 启动异步任务处理消息
     tokio::spawn({
         let engine = state.engine.clone();
