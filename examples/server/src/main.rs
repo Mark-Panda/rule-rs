@@ -104,10 +104,10 @@ async fn main() {
     let app = Router::new()
         .route("/api/components", get(list_components))
         .route("/api/chains", post(create_chain))
-        .route("/api/chains/:id", get(get_chain))
-        .route("/api/chains/:id", put(update_chain))
-        .route("/api/chains/:id", delete(delete_chain))
-        .route("/api/chains/execute/:id", post(execute_chain))
+        .route("/api/chains/{id}", get(get_chain))
+        .route("/api/chains/{id}", put(update_chain))
+        .route("/api/chains/{id}", delete(delete_chain))
+        .route("/api/chains/execute/{id}", post(execute_chain))
         // .layer(TraceLayer::new_for_http())
         .with_state(AppState {
             engine: engine.clone(),

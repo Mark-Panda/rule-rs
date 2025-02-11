@@ -1,0 +1,25 @@
+[package]
+name = "simple_rule"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Simple rule example for rule engine"
+
+[dependencies]
+# 本地依赖
+rule_rs = { path = "../../rule_rs" }
+
+# 序列化
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# 异步运行时
+tokio = { version = "1.0", features = ["full", "macros"] }
+
+# 日志
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# 工具
+async-trait = "0.1"

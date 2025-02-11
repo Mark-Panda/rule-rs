@@ -1,0 +1,56 @@
+[package]
+name = "rule_rs"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Core rule engine implementation"
+
+[dependencies]
+# 序列化/反序列化
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# 异步运行时
+tokio = { version = "1.0", features = ["full"] }
+
+# 通用工具
+uuid = { version = "1.0", features = ["serde", "v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+async-trait = "0.1"
+
+# 错误处理
+thiserror = "2.0.11"
+anyhow = "1.0"
+
+# 日志
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# JSON Schema 验证
+jsonschema = "0.29.0"
+
+cron = "0.15.0"
+
+
+# Blake3
+blake3 = "1.5.5"
+
+# QuickJS
+rquickjs = { version = "0.9.0", features = ["bindgen", "parallel"] }
+
+# HTTP 客户端
+reqwest = { version = "0.12.12", features = ["json"] }
+
+
+# Redis
+redis = { version = "0.28.2", features = ["tokio-comp", "connection-manager"] }
+
+futures = "0.3"
+
+lazy_static = "1.4.0"
+
+[dev-dependencies]
+tokio-test = "0.4"
+pretty_assertions = "1.0"
+test-log = "0.2"
