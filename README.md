@@ -34,6 +34,8 @@
 | 组件类型     | 说明     | 节点类型 | 示例配置                                |
 | ------------ | -------- | -------- | --------------------------------------- |
 | start        | 起始节点 | Head     | `{}`                                    |
+| delay        | 延时处理 | Head     | `{"delay_ms": 1000}`                    |
+| schedule     | 定时任务 | Head     | `{"cron": "*/5 * * * * *"}`             |
 | fork         | 分支节点 | Head     | `{}`                                    |
 | join         | 汇聚节点 | Tail     | `{}`                                    |
 | log          | 日志输出 | Tail     | `{"template": "${msg.data}"}`           |
@@ -41,10 +43,7 @@
 | filter       | 消息过滤 | Middle   | `{"condition": "value > 10"}`           |
 | transform    | 数据转换 | Middle   | `{"template": {"key": "${msg.value}"}}` |
 | transform_js | JS转换   | Middle   | `{"script": "return {...msg};"}`        |
-| delay        | 延时处理 | Head     | `{"delay_ms": 1000}`                    |
-| schedule     | 定时任务 | Head     | `{"cron": "*/5 * * * * *"}`             |
 | rest_client  | HTTP请求 | Middle   | `{"url": "http://api.example.com"}`     |
-| weather      | 天气服务 | Middle   | `{"city": "Shanghai"}`                  |
 | subchain     | 子规则链 | Middle   | `{"chain_id": "..."}`                   |
 
 ## 快速开始
@@ -130,16 +129,15 @@ engine.register_node_type("custom/type", Arc::new(|config| {
 
 项目包含多个完整的示例:
 
-- examples/simple_rule.rs - 基础规则链示例
-- examples/custom_component.rs - 自定义组件示例  
-- examples/filter_example.rs - 过滤器示例
-- examples/transform_example.rs - 数据转换示例
-- examples/delay_example.rs - 延时处理示例
-- examples/schedule_example.rs - 定时任务示例
-- examples/rest_client.rs - HTTP请求示例
-- examples/weather_service.rs - 天气服务示例
-
-
+- examples/simple_rule - 基础规则链示例
+- examples/custom_component - 自定义大小写转换组件示例  
+- examples/filter_example - 过滤器示例
+- examples/transform_example - 数据转换示例
+- examples/delay_example - 延时处理示例
+- examples/schedule_example - 定时任务示例
+- examples/rest_client - HTTP请求示例
+- examples/weather_service - 自定义天气服务组件示例
+- examples/redis_example - Redis自定义组件示例
 
 ## 规则链示例
 
