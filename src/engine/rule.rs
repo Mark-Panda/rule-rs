@@ -11,8 +11,7 @@ use crate::components::{
 };
 use crate::engine::{NodeFactory, NodeHandler, NodeRegistry, VersionManager};
 use crate::types::{
-    CommonConfig, ExecutionContext, Message, Node, NodeContext, NodeDescriptor, NodeType,
-    RuleChain, RuleError,
+    ExecutionContext, Message, Node, NodeContext, NodeDescriptor, NodeType, RuleChain, RuleError,
 };
 use async_trait::async_trait;
 use serde_json::json;
@@ -50,6 +49,7 @@ pub trait RuleEngineTrait: Debug + Send + Sync {
     async fn get_chain(&self, id: Uuid) -> Option<Arc<RuleChain>>;
     async fn remove_chain(&self, id: Uuid) -> Result<(), RuleError>;
     async fn register_node_type(&self, type_name: &str, factory: NodeFactory);
+    async fn get_component_descriptor(&self, type_name: &str) -> Option<NodeDescriptor>;
 }
 
 #[derive(Debug, Clone)]
@@ -88,9 +88,6 @@ impl RuleEngine {
                             stop: None,
                             success_branch: None,
                             error_branch: None,
-                            common: CommonConfig {
-                                node_type: NodeType::Middle,
-                            },
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: RedisConfig = serde_json::from_value(config)?;
@@ -104,9 +101,6 @@ impl RuleEngine {
                     if config.is_object() && config.as_object().unwrap().is_empty() {
                         Ok(Arc::new(LogNode::new(LogConfig {
                             template: "".to_string(),
-                            common: CommonConfig {
-                                node_type: NodeType::Tail,
-                            },
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: LogConfig = serde_json::from_value(config)?;
@@ -157,9 +151,6 @@ impl RuleEngine {
                         Ok(Arc::new(FilterNode::new(FilterConfig {
                             condition: "true".to_string(),
                             js_script: None,
-                            common: CommonConfig {
-                                node_type: NodeType::Middle,
-                            },
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: FilterConfig = serde_json::from_value(config)?;
@@ -173,9 +164,6 @@ impl RuleEngine {
                     if config.is_object() && config.as_object().unwrap().is_empty() {
                         Ok(Arc::new(TransformNode::new(TransformConfig {
                             template: json!({}),
-                            common: CommonConfig {
-                                node_type: NodeType::Middle,
-                            },
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: TransformConfig = serde_json::from_value(config)?;
@@ -189,9 +177,6 @@ impl RuleEngine {
                     if config.is_object() && config.as_object().unwrap().is_empty() {
                         Ok(Arc::new(TransformJsNode::new(TransformJsConfig {
                             script: "return msg;".to_string(),
-                            common: CommonConfig {
-                                node_type: NodeType::Middle,
-                            },
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: TransformJsConfig = serde_json::from_value(config)?;
@@ -206,9 +191,6 @@ impl RuleEngine {
                         Ok(Arc::new(ScriptNode::new(ScriptConfig {
                             script: "return msg;".to_string(),
                             output_type: None,
-                            common: CommonConfig {
-                                node_type: NodeType::Middle,
-                            },
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: ScriptConfig = serde_json::from_value(config)?;
@@ -223,9 +205,6 @@ impl RuleEngine {
                         Ok(Arc::new(SwitchNode::new(SwitchConfig {
                             cases: Vec::new(),
                             default_next: None,
-                            common: CommonConfig {
-                                node_type: NodeType::Middle,
-                            },
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: SwitchConfig = serde_json::from_value(config)?;
@@ -244,9 +223,6 @@ impl RuleEngine {
                             timeout_ms: None,
                             success_branch: None,
                             error_branch: None,
-                            common: CommonConfig {
-                                node_type: NodeType::Middle,
-                            },
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: RestClientConfig = serde_json::from_value(config)?;
@@ -262,9 +238,6 @@ impl RuleEngine {
                             api_key: "demo".to_string(),
                             city: "".to_string(),
                             language: "zh".to_string(),
-                            common: CommonConfig {
-                                node_type: NodeType::Middle,
-                            },
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: WeatherConfig = serde_json::from_value(config)?;
@@ -278,9 +251,6 @@ impl RuleEngine {
                     if config.is_object() && config.as_object().unwrap().is_empty() {
                         Ok(Arc::new(SubchainNode::new(SubchainConfig {
                             chain_id: Uuid::nil(),
-                            common: CommonConfig {
-                                node_type: NodeType::Middle,
-                            },
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: SubchainConfig = serde_json::from_value(config)?;
@@ -297,9 +267,6 @@ impl RuleEngine {
                             main: "main".to_string(),
                             chain_id: String::new(),
                             node_id: String::new(),
-                            common: CommonConfig {
-                                node_type: NodeType::Middle,
-                            },
                         })) as Arc<dyn NodeHandler>)
                     } else {
                         let config: JsFunctionConfig = serde_json::from_value(config)?;
@@ -315,11 +282,7 @@ impl RuleEngine {
                 "join",
                 Arc::new(|config| {
                     if config.is_object() && config.as_object().unwrap().is_empty() {
-                        Ok(Arc::new(JoinNode::new(JoinConfig {
-                            common: CommonConfig {
-                                node_type: NodeType::Middle,
-                            },
-                        })) as Arc<dyn NodeHandler>)
+                        Ok(Arc::new(JoinNode::new(JoinConfig {})) as Arc<dyn NodeHandler>)
                     } else {
                         let config: JoinConfig = serde_json::from_value(config)?;
                         Ok(Arc::new(JoinNode::new(config)) as Arc<dyn NodeHandler>)
@@ -377,6 +340,12 @@ impl RuleEngine {
 
 #[async_trait]
 impl RuleEngineTrait for RuleEngine {
+    async fn get_component_descriptor(&self, type_name: &str) -> Option<NodeDescriptor> {
+        self.node_registry.get_descriptor(type_name).await
+    }
+    async fn get_registered_components(&self) -> Vec<NodeDescriptor> {
+        self.node_registry.get_descriptors().await
+    }
     async fn check_circular_dependency(&self, chain: &RuleChain) -> Result<(), RuleError> {
         let chains = self.chains.read().await;
 
@@ -637,13 +606,21 @@ impl RuleEngineTrait for RuleEngine {
         let start_node = chain
             .get_start_node()?
             .ok_or_else(|| RuleError::ConfigError("规则链没有起始节点".to_string()))?;
-        let node_type = start_node.get_node_type()?;
+
+        let descriptor = self
+            .get_component_descriptor(&start_node.type_name)
+            .await
+            .ok_or_else(|| {
+                RuleError::ConfigError(format!("未找到节点类型: {}", start_node.type_name))
+            })?;
+
+        let node_type = descriptor.node_type;
         if node_type != NodeType::Head {
             return Err(RuleError::ConfigError(
                 "规则链必须以header节点开始".to_string(),
             ));
         }
-        chain.validate()?;
+        chain.validate(self).await?;
 
         // 启用循环依赖检查
         self.check_circular_dependency1(&chain).await?;
@@ -777,11 +754,6 @@ impl RuleEngineTrait for RuleEngine {
 
     async fn get_current_version(&self) -> u64 {
         self.version_manager.get_current_version()
-    }
-
-    /// 获取所有已注册的组件类型
-    async fn get_registered_components(&self) -> Vec<NodeDescriptor> {
-        self.node_registry.get_descriptors().await
     }
 
     /// 获取所有已加载的规则链
@@ -931,11 +903,9 @@ impl RuleChain {
             .map(Some)
     }
 
-    pub fn validate(&self) -> Result<(), RuleError> {
-        // 检查每个节点的连接是否符合类型限制
+    pub async fn validate(&self, engine: &RuleEngine) -> Result<(), RuleError> {
         for node in &self.nodes {
-            let node_type = self.get_node_type(node)?;
-
+            let node_type = Self::get_node_type(engine, node).await?;
             // 检查头节点不能被指向
             if node_type == NodeType::Head {
                 let has_incoming = self.connections.iter().any(|conn| conn.to_id == node.id);
@@ -961,13 +931,11 @@ impl RuleChain {
         Ok(())
     }
 
-    fn get_node_type(&self, node: &Node) -> Result<NodeType, RuleError> {
-        match node.type_name.as_str() {
-            "log" => Ok(NodeType::Tail),
-            "delay" => Ok(NodeType::Head),
-            "schedule" => Ok(NodeType::Head),
-            "start" => Ok(NodeType::Head),
-            _ => Ok(NodeType::Middle),
-        }
+    async fn get_node_type(engine: &RuleEngine, node: &Node) -> Result<NodeType, RuleError> {
+        let descriptor = engine
+            .get_component_descriptor(&node.type_name)
+            .await
+            .ok_or_else(|| RuleError::ConfigError(format!("未找到节点类型: {}", node.type_name)))?;
+        Ok(descriptor.node_type)
     }
 }

@@ -1,5 +1,5 @@
 use crate::engine::NodeHandler;
-use crate::types::{ExecutionContext, Message, NodeContext, NodeDescriptor, RuleError};
+use crate::types::{ExecutionContext, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 
 #[derive(Debug)]
@@ -81,6 +81,7 @@ impl NodeHandler for ForkNode {
             type_name: "fork".to_string(),
             name: "并行网关".to_string(),
             description: "将消息并行发送到多个分支进行处理".to_string(),
+            node_type: NodeType::Middle,
         }
     }
 }

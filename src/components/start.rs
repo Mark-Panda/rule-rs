@@ -1,21 +1,14 @@
 use crate::engine::NodeHandler;
-use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
+use crate::types::{Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
-pub struct StartConfig {
-    #[serde(flatten)]
-    pub common: CommonConfig,
-}
+pub struct StartConfig {}
 
 impl Default for StartConfig {
     fn default() -> Self {
-        Self {
-            common: CommonConfig {
-                node_type: NodeType::Head,
-            },
-        }
+        Self {}
     }
 }
 
@@ -48,6 +41,7 @@ impl NodeHandler for StartNode {
             type_name: "start".to_string(),
             name: "开始节点".to_string(),
             description: "规则链的起始节点".to_string(),
+            node_type: NodeType::Head,
         }
     }
 }

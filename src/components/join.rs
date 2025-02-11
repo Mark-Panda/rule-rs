@@ -1,5 +1,5 @@
 use crate::engine::NodeHandler;
-use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
+use crate::types::{Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use lazy_static::lazy_static;
 use serde::Deserialize;
@@ -15,18 +15,11 @@ lazy_static! {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct JoinConfig {
-    #[serde(flatten)]
-    pub common: CommonConfig,
-}
+pub struct JoinConfig {}
 
 impl Default for JoinConfig {
     fn default() -> Self {
-        Self {
-            common: CommonConfig {
-                node_type: NodeType::Middle,
-            },
-        }
+        Self {}
     }
 }
 
@@ -106,6 +99,7 @@ impl NodeHandler for JoinNode {
             type_name: "join".to_string(),
             name: "汇聚节点".to_string(),
             description: "汇聚并合并多个并行分支的执行结果".to_string(),
+            node_type: NodeType::Middle,
         }
     }
 }

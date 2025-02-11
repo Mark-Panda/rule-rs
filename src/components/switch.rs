@@ -1,5 +1,5 @@
 use crate::engine::NodeHandler;
-use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
+use crate::types::{Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use rquickjs::{Context, Runtime};
 use serde::{Deserialize, Serialize};
@@ -16,8 +16,6 @@ pub struct SwitchCase {
 pub struct SwitchConfig {
     pub cases: Vec<SwitchCase>,
     pub default_next: Option<String>,
-    #[serde(flatten)]
-    pub common: CommonConfig,
 }
 
 impl Default for SwitchConfig {
@@ -25,9 +23,6 @@ impl Default for SwitchConfig {
         Self {
             cases: Vec::new(),
             default_next: None,
-            common: CommonConfig {
-                node_type: NodeType::Middle,
-            },
         }
     }
 }
@@ -102,6 +97,7 @@ impl NodeHandler for SwitchNode {
             type_name: "switch".to_string(),
             name: "条件分支节点".to_string(),
             description: "根据条件选择不同的处理分支".to_string(),
+            node_type: NodeType::Middle,
         }
     }
 }

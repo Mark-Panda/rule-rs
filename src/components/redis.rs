@@ -1,5 +1,5 @@
 use crate::engine::NodeHandler;
-use crate::types::{CommonConfig, Message, NodeContext, NodeDescriptor, NodeType, RuleError};
+use crate::types::{Message, NodeContext, NodeDescriptor, NodeType, RuleError};
 use async_trait::async_trait;
 use redis::{cmd, AsyncCommands, Client, RedisResult, Value as RedisValue};
 use serde::Deserialize;
@@ -46,9 +46,6 @@ pub enum RedisCommand {
 
 #[derive(Debug, Deserialize)]
 pub struct RedisConfig {
-    #[serde(flatten)]
-    pub common: CommonConfig,
-
     // Redis连接配置
     pub url: String,
 
@@ -72,9 +69,6 @@ pub struct RedisConfig {
 impl Default for RedisConfig {
     fn default() -> Self {
         Self {
-            common: CommonConfig {
-                node_type: NodeType::Middle,
-            },
             url: "redis://localhost:6379".to_string(),
             operation: RedisOperation::Raw {
                 command: "PING".to_string(),
@@ -147,7 +141,11 @@ impl RedisNode {
 
 #[async_trait]
 impl NodeHandler for RedisNode {
-    async fn handle<'a>(&'a self, ctx: NodeContext<'a>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle<'a>(
+        &'a self,
+        ctx: NodeContext<'a>,
+        msg: Message,
+    ) -> Result<Message, RuleError> {
         let mut conn = self
             .client
             .get_multiplexed_async_connection()
@@ -452,18 +450,22 @@ impl NodeHandler for RedisNode {
             new_msg.data = value;
             // 设置成功分支
             if let Some(branch) = &self.config.success_branch {
-                new_msg.metadata.insert("branch_name".into(), branch.clone());
+                new_msg
+                    .metadata
+                    .insert("branch_name".into(), branch.clone());
             }
         } else {
             // 设置失败分支
             if let Some(branch) = &self.config.error_branch {
-                new_msg.metadata.insert("branch_name".into(), branch.clone());
+                new_msg
+                    .metadata
+                    .insert("branch_name".into(), branch.clone());
             }
         }
 
         // 发送到下一个节点
         ctx.send_next(new_msg.clone()).await?;
-        
+
         Ok(new_msg)
     }
 
@@ -472,6 +474,7 @@ impl NodeHandler for RedisNode {
             type_name: "redis".to_string(),
             name: "Redis客户端".to_string(),
             description: "执行Redis命令".to_string(),
+            node_type: NodeType::Middle,
         }
     }
 }

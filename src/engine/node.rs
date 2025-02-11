@@ -79,6 +79,19 @@ impl NodeRegistry {
         descriptors.values().cloned().collect()
     }
 
+    pub async fn get_descriptor(&self, type_name: &str) -> Option<NodeDescriptor> {
+        let factories = self.factories.read().await;
+        if let Some(factory) = factories.get(type_name) {
+            let empty_config = serde_json::Value::Object(serde_json::Map::new());
+            if let Ok(node) = factory(empty_config) {
+                let mut descriptor = node.get_descriptor();
+                descriptor.type_name = type_name.to_string();
+                return Some(descriptor);
+            }
+        }
+        None
+    }
+
     pub async fn create_handler(
         &self,
         type_name: &str,
