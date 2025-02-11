@@ -4,10 +4,10 @@ use crate::aop::{
 };
 use crate::components::{
     DelayConfig, DelayNode, FilterConfig, FilterNode, ForkNode, JoinConfig, JoinNode,
-    JsFunctionConfig, JsFunctionNode, LogConfig, LogNode, RedisConfig, RedisNode, RedisOperation,
-    RestClientConfig, RestClientNode, ScheduleConfig, ScheduleNode, ScriptConfig, ScriptNode,
-    StartConfig, StartNode, SubchainConfig, SubchainNode, SwitchConfig, SwitchNode,
-    TransformConfig, TransformJsConfig, TransformJsNode, TransformNode, WeatherConfig, WeatherNode,
+    JsFunctionConfig, JsFunctionNode, LogConfig, LogNode, RestClientConfig, RestClientNode,
+    ScheduleConfig, ScheduleNode, ScriptConfig, ScriptNode, StartConfig, StartNode, SubchainConfig,
+    SubchainNode, SwitchConfig, SwitchNode, TransformConfig, TransformJsConfig, TransformJsNode,
+    TransformNode,
 };
 use crate::engine::{NodeFactory, NodeHandler, NodeRegistry, VersionManager};
 use crate::types::{
@@ -68,33 +68,6 @@ impl RuleEngine {
 
         // 注册内置组件
         let factories: Vec<(&str, NodeFactory)> = vec![
-            (
-                "redis",
-                Arc::new(|config| {
-                    if config.is_object() && config.as_object().unwrap().is_empty() {
-                        Ok(Arc::new(RedisNode::new(RedisConfig {
-                            url: "redis://localhost:6379".to_string(),
-                            operation: RedisOperation::Raw {
-                                command: "PING".to_string(),
-                                args: vec![],
-                            },
-                            key: String::new(),
-                            field: None,
-                            value: None,
-                            values: None,
-                            score: None,
-                            ttl: None,
-                            start: None,
-                            stop: None,
-                            success_branch: None,
-                            error_branch: None,
-                        })) as Arc<dyn NodeHandler>)
-                    } else {
-                        let config: RedisConfig = serde_json::from_value(config)?;
-                        Ok(Arc::new(RedisNode::new(config)) as Arc<dyn NodeHandler>)
-                    }
-                }),
-            ),
             (
                 "log",
                 Arc::new(|config| {
@@ -227,21 +200,6 @@ impl RuleEngine {
                     } else {
                         let config: RestClientConfig = serde_json::from_value(config)?;
                         Ok(Arc::new(RestClientNode::new(config)) as Arc<dyn NodeHandler>)
-                    }
-                }),
-            ),
-            (
-                "weather",
-                Arc::new(|config| {
-                    if config.is_object() && config.as_object().unwrap().is_empty() {
-                        Ok(Arc::new(WeatherNode::new(WeatherConfig {
-                            api_key: "demo".to_string(),
-                            city: "".to_string(),
-                            language: "zh".to_string(),
-                        })) as Arc<dyn NodeHandler>)
-                    } else {
-                        let config: WeatherConfig = serde_json::from_value(config)?;
-                        Ok(Arc::new(WeatherNode::new(config)) as Arc<dyn NodeHandler>)
                     }
                 }),
             ),
