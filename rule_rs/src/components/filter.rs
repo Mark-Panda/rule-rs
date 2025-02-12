@@ -29,10 +29,7 @@ impl FilterNode {
     }
 
     fn eval_condition(&self, _ctx: &NodeContext, msg: &Message) -> Result<bool, RuleError> {
-        println!("eval condition: {}", self.config.condition);
-        println!("msg: {:?}", msg);
         if let Some(value) = msg.data.get("value") {
-            println!("value: {:?}", value);
             if let Some(num) = value.as_f64() {
                 match self.config.condition.as_str() {
                     "value < 10" => Ok(num < 10.0),
@@ -58,7 +55,6 @@ impl NodeHandler for FilterNode {
         ctx: NodeContext<'a>,
         msg: Message,
     ) -> Result<Message, RuleError> {
-        println!("filter condition: {}", self.config.condition);
         if self.eval_condition(&ctx, &msg)? {
             // 条件满足,发送到下一个节点
             ctx.send_next(msg.clone()).await?;

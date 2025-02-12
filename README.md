@@ -1,256 +1,115 @@
 # rule-rs
 
-一个基于 Rust 实现的轻量级规则引擎,支持异步执行、组件扩展和规则链编排。
+A lightweight rule engine implemented in Rust that supports asynchronous execution, component extension, and rule chain orchestration.
 
-## 主要特性
+## Key Features
 
-- 异步执行引擎
-- 丰富的内置组件
-- 支持自定义组件扩展
-- 支持子规则链嵌套
-- 支持 AOP 拦截器
-- 支持规则链热加载
-- 支持 REST API 服务
+- Asynchronous execution engine
+- Rich built-in components
+- Custom component extension support
+- Nested sub-rule chain support
+- AOP interceptor support
+- Rule chain hot-reloading
+- REST API service support
 
-## 节点类型
+## Node Types
 
-规则链中的节点分为三种类型:
+Nodes in rule chains are divided into three types:
 
-| 类型   | 说明                            | 限制               |
-| ------ | ------------------------------- | ------------------ |
-| Head   | 头节点(如 start/delay/schedule) | 不能被其他节点指向 |
-| Middle | 中间处理节点                    | 无特殊限制         |
-| Tail   | 尾节点(如 log)                  | 不能指向其他节点   |
+| Type   | Description                           | Restriction                           |
+| ------ | ------------------------------------- | ------------------------------------- |
+| Head   | Head nodes (start/delay/schedule)     | Cannot be pointed to by other nodes  |
+| Middle | Intermediate processing nodes         | No special restrictions              |
+| Tail   | Tail nodes (like log)                | Cannot point to other nodes          |
 
-## 规则链规范
+## Rule Chain Specifications
 
-1. 规则链必须以 Head 类型节点开始(通常是 start 节点)
-2. Head 节点不能被其他节点指向
-3. Tail 节点不能指向其他节点
-4. 不允许出现循环依赖
+1. Rule chains must start with a Head type node (usually a start node)
+2. Head nodes cannot be pointed to by other nodes
+3. Tail nodes cannot point to other nodes
+4. Circular dependencies are not allowed
 
-## 内置组件
+## Built-in Components
 
-| 组件类型     | 说明     | 节点类型 | 示例配置                                |
-| ------------ | -------- | -------- | --------------------------------------- |
-| start        | 起始节点 | Head     | `{}`                                    |
-| delay        | 延时处理 | Head     | `{"delay_ms": 1000}`                    |
-| schedule     | 定时任务 | Head     | `{"cron": "*/5 * * * * *"}`             |
-| fork         | 分支节点 | Head     | `{}`                                    |
-| join         | 汇聚节点 | Tail     | `{}`                                    |
-| log          | 日志输出 | Tail     | `{"template": "${msg.data}"}`           |
-| script       | JS脚本   | Middle   | `{"script": "return msg.data;"}`        |
-| filter       | 消息过滤 | Middle   | `{"condition": "value > 10"}`           |
-| transform    | 数据转换 | Middle   | `{"template": {"key": "${msg.value}"}}` |
-| transform_js | JS转换   | Middle   | `{"script": "return {...msg};"}`        |
-| rest_client  | HTTP请求 | Middle   | `{"url": "http://api.example.com"}`     |
-| subchain     | 子规则链 | Middle   | `{"chain_id": "..."}`                   |
+| Component Type | Description      | Node Type | Example Configuration                   |
+| ------------- | ---------------- | --------- | -------------------------------------- |
+| start         | Start node      | Head      | `{}`                                   |
+| delay         | Delay process   | Head      | `{"delay_ms": 1000}`                   |
+| schedule      | Scheduled task  | Head      | `{"cron": "*/5 * * * * *"}`            |
+| fork          | Branch node     | Head      | `{}`                                   |
+| join          | Merge node      | Tail      | `{}`                                   |
+| log           | Log output      | Tail      | `{"template": "${msg.data}"}`          |
+| script        | JS script       | Middle    | `{"script": "return msg.data;"}`       |
+| filter        | Message filter  | Middle    | `{"condition": "value > 10"}`          |
+| transform     | Data transform  | Middle    | `{"template": {"key": "${msg.value}"}}` |
+| transform_js  | JS transform    | Middle    | `{"script": "return {...msg};"}`       |
+| rest_client   | HTTP request    | Middle    | `{"url": "http://api.example.com"}`    |
+| subchain      | Sub rule chain  | Middle    | `{"chain_id": "..."}`                  |
 
-## 快速开始
+## Quick Start
 
-### 1. 添加依赖
+### 1. Add Dependency
 
 ```toml
 [dependencies]
 rule-rs = "0.1.0"
 ```
 
-### 2. 创建规则链
+### 2. Create Rule Chain
 
 ```rust
 use rule_rs::{Message, RuleEngine};
 
 #[tokio::main]
 async fn main() {
-    // 创建引擎实例
+    // Create engine instance
     let engine = RuleEngine::new().await;
     
-    // 加载规则链
-    engine.load_chain(r#"{
-        "id": "...",
-        "name": "示例规则链",
+    // Load rule chain
+    let chain_id1 = engine.load_chain(r#"{
+        "id": "00000000-0000-0000-0000-000000000000",
+        "name": "Example Rule Chain",
         "root": true,
         "nodes": [
             {
-                "id": "start-node",
+                "id": "11111111-1111-1111-1111-111111111111",
                 "type_name": "start",
+                "chain_id": "00000000-0000-0000-0000-000000000000",
                 "config": {},
                 "layout": { "x": 50, "y": 100 }
             },
             {
-                "id": "log-node", 
+                "id": "22222222-2222-2222-2222-222222222222", 
                 "type_name": "log",
+                "chain_id": "00000000-0000-0000-0000-000000000000",
                 "config": {
-                    "template": "收到消息: ${msg.data}"
+                    "template": "Received message: ${msg.data}"
                 },
                 "layout": { "x": 200, "y": 100 }
             }
         ],
         "connections": [
             {
-                "from_id": "start-node",
-                "to_id": "log-node",
+                "from_id": "11111111-1111-1111-1111-111111111111",
+                "to_id": "22222222-2222-2222-2222-222222222222",
                 "type_name": "success"
             }
-        ]
+        ],
+        "metadata": {
+            "version": 1,
+            "created_at": 1679800000,
+            "updated_at": 1679800000
+        }
     }"#).await?;
 
-    // 处理消息
-    let msg = Message::new("test", json!({"value": 100}));
-    engine.process_msg(msg).await?;
+    let msg = Message::new("test", json!({"value": 1}));
+    engine.process_msg(chain_id1, msg).await?; // Ignore error result
 }
 ```
 
-### 3. 自定义组件
+## Component Development Guide
 
-```rust
-use async_trait::async_trait;
-use rule_rs::engine::NodeHandler;
-
-pub struct CustomNode {
-    config: CustomConfig,
-}
-
-#[async_trait]
-impl NodeHandler for CustomNode {
-    async fn handle(&self, ctx: NodeContext<'_>, msg: Message) -> Result<Message, RuleError> {
-        // 处理消息
-        Ok(msg)
-    }
-}
-
-// 注册组件
-engine.register_node_type("custom/type", Arc::new(|config| {
-    Ok(Arc::new(CustomNode::new(config)) as Arc<dyn NodeHandler>)
-})).await;
-```
-
-## 示例代码
-
-项目包含多个完整的示例:
-
-- examples/simple_rule - 基础规则链示例
-- examples/custom_component - 自定义大小写转换组件示例  
-- examples/filter_example - 过滤器示例
-- examples/transform_example - 数据转换示例
-- examples/delay_example - 延时处理示例
-- examples/schedule_example - 定时任务示例
-- examples/rest_client - HTTP请求示例
-- examples/weather_service - 自定义天气服务组件示例
-- examples/redis_example - Redis自定义组件示例
-
-## 规则链示例
-
-### 1. 基础规则链 - 数据转换和日志
-
-```json
-{
-    "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
-    "name": "基础示例",
-    "root": true,
-    "nodes": [
-        {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3300",
-            "type_name": "start",
-            "config": {},
-            "layout": { "x": 50, "y": 100 }
-        },
-        {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
-            "type_name": "transform",
-            "config": {
-                "template": {
-                    "value": "${msg.data.value * 2}"
-                }
-            },
-            "layout": { "x": 200, "y": 100 }
-        },
-        {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
-            "type_name": "log",
-            "config": {
-                "template": "转换结果: ${msg.data.value}"
-            },
-            "layout": { "x": 350, "y": 100 }
-        }
-    ],
-    "connections": [
-        {
-            "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3300",
-            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
-            "type_name": "success"
-        },
-        {
-            "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
-            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
-            "type_name": "success"
-        }
-    ]
-}
-```
-
-### 2. 分支处理 - Filter 节点
-
-```json
-{
-    "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
-    "name": "分支处理示例",
-    "root": true,
-    "nodes": [
-        {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3300",
-            "type_name": "start",
-            "config": {},
-            "layout": { "x": 50, "y": 100 }
-        },
-        {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
-            "type_name": "filter",
-            "config": {
-                "condition": "msg.data.value > 10"
-            },
-            "layout": { "x": 200, "y": 100 }
-        },
-        {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
-            "type_name": "log",
-            "config": {
-                "template": "大于10: ${msg.data.value}"
-            },
-            "layout": { "x": 350, "y": 50 }
-        },
-        {
-            "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304",
-            "type_name": "log",
-            "config": {
-                "template": "小于等于10: ${msg.data.value}"
-            },
-            "layout": { "x": 350, "y": 150 }
-        }
-    ],
-    "connections": [
-        {
-            "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3300",
-            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
-            "type_name": "success"
-        },
-        {
-            "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
-            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
-            "type_name": "success"
-        },
-        {
-            "from_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
-            "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304",
-            "type_name": "failure"
-        }
-    ]
-}
-```
-
-## 组件开发指南
-
-### 1. 定义组件配置
+### 1. Define Component Configuration
 
 ```rust
 #[derive(Debug, Deserialize)]
@@ -258,27 +117,39 @@ pub struct CustomConfig {
     pub param1: String,
     pub param2: i32,
 }
+impl Default for CustomConfig {
+    fn default() -> Self {
+        Self {}
+    }
+}
 ```
 
-### 2. 实现组件处理逻辑
+### 2. Implement Component Logic
 
 ```rust
 #[derive(Debug)]
 pub struct CustomNode {
+    #[allow(dead_code)]
     config: CustomConfig,
+}
+
+impl CustomNode {
+    pub fn new(config: UpperConfig) -> Self {
+        Self { config }
+    }
 }
 
 #[async_trait]
 impl NodeHandler for CustomNode {
-    async fn handle(&self, ctx: NodeContext<'_>, msg: Message) -> Result<Message, RuleError> {
-        // 1. 获取配置参数
-        let param1 = &self.config.param1;
+    async fn handle(&'a self, ctx: NodeContext<'_>, msg: Message) -> Result<Message, RuleError> {
+        // 1. Get configuration parameters
+        let param1 = self.config.param1;
         let param2 = self.config.param2;
 
-        // 2. 处理消息
+        // 2. Process message
         let new_msg = process_message(msg, param1, param2)?;
 
-        // 3. 发送到下一个节点
+        // 3. Send to next node
         ctx.send_next(new_msg.clone()).await?;
         
         Ok(new_msg)
@@ -286,40 +157,73 @@ impl NodeHandler for CustomNode {
 
     fn get_descriptor(&self) -> NodeDescriptor {
         NodeDescriptor {
-            type_name: "custom".to_string(),
-            name: "自定义节点".to_string(),
-            description: "这是一个自定义处理节点".to_string(),
+            type_name: "custom/type".to_string(),
+            name: "Custom Node".to_string(),
+            description: "This is a custom processing node".to_string(),
             node_type: NodeType::Middle,
         }
     }
 }
 ```
 
-## 最佳实践
+### 3. Register Component
 
-1. 规则链设计
-   - 每个规则链都必须以 start 节点开始
-   - 合理使用分支和汇聚节点控制流程
-   - 避免过深的节点嵌套
+```rust
+engine.register_node_type("custom/type", Arc::new(|config| {
+    Ok(Arc::new(CustomNode::new(config)) as Arc<dyn NodeHandler>)
+})).await;
+```
 
-2. 组件开发
-   - 遵循单一职责原则
-   - 合理处理错误情况
-   - 提供清晰的配置参数说明
+## Examples
 
-3. 性能优化
-   - 使用异步操作处理 I/O
-   - 避免重复计算
-   - 合理使用缓存
+The project includes multiple complete examples:
 
-## 文档
+- examples/simple_rule - Basic rule chain example
+- examples/custom_component - Custom case conversion component example
+- examples/filter_example - Filter example
+- examples/transform_example - Data transformation example
+- examples/delay_example - Delay processing example
+- examples/schedule_example - Scheduled task example
+- examples/rest_client - HTTP request example
+- examples/weather_service - Custom weather service component example
+- examples/redis_example - Redis custom component example
+- examples/aop_example - AOP interceptor example
+- examples/subchain_example - Sub rule chain example
+- examples/circular_chain - Circular dependency example
+- examples/circular_subchain - Circular dependency sub rule chain example
+- examples/circular_three_chains - Circular dependency three chains example
 
-更多详细文档请参考:
+## Best Practices
 
-- [架构设计](docs/architecture.md)
-- [组件开发指南](docs/component.md) 
-- [API文档](docs/api.md)
+1. Rule Chain Design
+   - Each rule chain must start with a header node
+   - Use branch and merge nodes appropriately to control flow
+   - Avoid deep node nesting
+
+2. Component Development
+   - Follow single responsibility principle
+   - Handle error cases properly
+   - Provide clear configuration parameter documentation
+
+3. Performance Optimization
+   - Use async operations for I/O
+   - Avoid repeated calculations
+   - Use caching appropriately
+
+## Documentation
+
+For more detailed documentation, please refer to:
+
+- [Architecture Design](docs/architecture.md)
+- [Component Development Guide](docs/component.md)
+- [API Documentation](docs/api.md)
+
+## Acknowledgments
+
+Thanks to the following projects and libraries for inspiring and helping rule-rs:
+
+- [rulego](https://github.com/rulego/rulego)
 
 ## License
 
-MIT License
+MIT License 
