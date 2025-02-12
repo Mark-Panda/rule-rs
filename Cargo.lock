@@ -42,7 +42,7 @@ dependencies = [
 
 [[package]]
 name = "all_components"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "rule_rs",
@@ -55,7 +55,7 @@ dependencies = [
 
 [[package]]
 name = "all_nodes"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "rule_rs",
@@ -139,7 +139,7 @@ checksum = "34ac096ce696dc2fcabef30516bb13c0a68a11d30131d3df6f04711467681b04"
 
 [[package]]
 name = "aop_example"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "rule_rs",
@@ -416,7 +416,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chain_management"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "rule_rs",
@@ -444,7 +444,7 @@ dependencies = [
 
 [[package]]
 name = "circular_chain"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "rule_rs",
@@ -457,7 +457,7 @@ dependencies = [
 
 [[package]]
 name = "circular_subchain"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "rule_rs",
@@ -470,7 +470,7 @@ dependencies = [
 
 [[package]]
 name = "circular_three_chains"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "rule_rs",
@@ -556,7 +556,7 @@ dependencies = [
 
 [[package]]
 name = "custom_component"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "rule_rs",
@@ -569,7 +569,7 @@ dependencies = [
 
 [[package]]
 name = "custom_component_example"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "rule_rs",
@@ -582,7 +582,7 @@ dependencies = [
 
 [[package]]
 name = "delay_example"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "rule_rs",
@@ -690,7 +690,7 @@ checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
 
 [[package]]
 name = "filter_example"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "rule_rs",
@@ -735,7 +735,7 @@ checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
 
 [[package]]
 name = "fork_join_example"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "rule_rs",
@@ -1260,7 +1260,7 @@ dependencies = [
 
 [[package]]
 name = "js_function_example"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "rule_rs",
@@ -1273,7 +1273,7 @@ dependencies = [
 
 [[package]]
 name = "js_function_multi_nodes"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "rule_rs",
@@ -1286,7 +1286,7 @@ dependencies = [
 
 [[package]]
 name = "js_transform"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "rule_rs",
@@ -1738,7 +1738,7 @@ dependencies = [
 
 [[package]]
 name = "redis_example"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "redis",
@@ -1890,7 +1890,7 @@ dependencies = [
 
 [[package]]
 name = "rest_client"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "rule_rs",
@@ -1903,7 +1903,7 @@ dependencies = [
 
 [[package]]
 name = "rest_client_branch"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "rule_rs",
@@ -1978,7 +1978,7 @@ dependencies = [
 
 [[package]]
 name = "rule_rs"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2089,7 +2089,7 @@ dependencies = [
 
 [[package]]
 name = "schedule_example"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "rule_rs",
@@ -2185,7 +2185,7 @@ dependencies = [
 
 [[package]]
 name = "server"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "axum",
@@ -2233,7 +2233,7 @@ dependencies = [
 
 [[package]]
 name = "simple_rule"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "rule_rs",
@@ -2289,7 +2289,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "switch_example"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "rule_rs",
@@ -2410,7 +2410,7 @@ dependencies = [
 
 [[package]]
 name = "thread_example"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2654,7 +2654,7 @@ dependencies = [
 
 [[package]]
 name = "transform_example"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "rule_rs",
@@ -2860,7 +2860,7 @@ dependencies = [
 
 [[package]]
 name = "weather_service"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "reqwest",
