@@ -66,20 +66,22 @@ async fn main() {
     let engine = RuleEngine::new().await;
     
     // 加载规则链
-    engine.load_chain(r#"{
-        "id": "...",
+    let chain_id1 = engine.load_chain(r#"{
+        "id": "00000000-0000-0000-0000-000000000000",
         "name": "示例规则链",
         "root": true,
         "nodes": [
             {
-                "id": "start-node",
+                "id": "11111111-1111-1111-1111-111111111111",
                 "type_name": "start",
+                "chain_id": "00000000-0000-0000-0000-000000000000",
                 "config": {},
                 "layout": { "x": 50, "y": 100 }
             },
             {
-                "id": "log-node", 
+                "id": "22222222-2222-2222-2222-222222222222", 
                 "type_name": "log",
+                "chain_id": "00000000-0000-0000-0000-000000000000",
                 "config": {
                     "template": "收到消息: ${msg.data}"
                 },
@@ -88,56 +90,22 @@ async fn main() {
         ],
         "connections": [
             {
-                "from_id": "start-node",
-                "to_id": "log-node",
+                "from_id": "11111111-1111-1111-1111-111111111111",
+                "to_id": "22222222-2222-2222-2222-222222222222",
                 "type_name": "success"
             }
-        ]
+        ],
+        "metadata": {
+            "version": 1,
+            "created_at": 1679800000,
+            "updated_at": 1679800000
+        }
     }"#).await?;
 
-    // 处理消息
-    let msg = Message::new("test", json!({"value": 100}));
-    engine.process_msg(msg).await?;
+    let msg = Message::new("test", json!({"value": 1}));
+    engine.process_msg(chain_id1, msg).await?; // 忽略错误结果
 }
 ```
-
-### 3. 自定义组件
-
-```rust
-use async_trait::async_trait;
-use rule_rs::engine::NodeHandler;
-
-pub struct CustomNode {
-    config: CustomConfig,
-}
-
-#[async_trait]
-impl NodeHandler for CustomNode {
-    async fn handle(&self, ctx: NodeContext<'_>, msg: Message) -> Result<Message, RuleError> {
-        // 处理消息
-        Ok(msg)
-    }
-}
-
-// 注册组件
-engine.register_node_type("custom/type", Arc::new(|config| {
-    Ok(Arc::new(CustomNode::new(config)) as Arc<dyn NodeHandler>)
-})).await;
-```
-
-## 示例代码
-
-项目包含多个完整的示例:
-
-- examples/simple_rule - 基础规则链示例
-- examples/custom_component - 自定义大小写转换组件示例  
-- examples/filter_example - 过滤器示例
-- examples/transform_example - 数据转换示例
-- examples/delay_example - 延时处理示例
-- examples/schedule_example - 定时任务示例
-- examples/rest_client - HTTP请求示例
-- examples/weather_service - 自定义天气服务组件示例
-- examples/redis_example - Redis自定义组件示例
 
 ## 规则链示例
 
@@ -152,12 +120,14 @@ engine.register_node_type("custom/type", Arc::new(|config| {
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3300",
             "type_name": "start",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {},
             "layout": { "x": 50, "y": 100 }
         },
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
             "type_name": "transform",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
                 "template": {
                     "value": "${msg.data.value * 2}"
@@ -168,6 +138,7 @@ engine.register_node_type("custom/type", Arc::new(|config| {
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
             "type_name": "log",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
                 "template": "转换结果: ${msg.data.value}"
             },
@@ -185,7 +156,12 @@ engine.register_node_type("custom/type", Arc::new(|config| {
             "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
             "type_name": "success"
         }
-    ]
+    ],
+    "metadata": {
+        "version": 1,
+        "created_at": 1679800000,
+        "updated_at": 1679800000
+    }
 }
 ```
 
@@ -200,12 +176,14 @@ engine.register_node_type("custom/type", Arc::new(|config| {
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3300",
             "type_name": "start",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {},
             "layout": { "x": 50, "y": 100 }
         },
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3302",
             "type_name": "filter",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
                 "condition": "msg.data.value > 10"
             },
@@ -214,6 +192,7 @@ engine.register_node_type("custom/type", Arc::new(|config| {
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3303",
             "type_name": "log",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
                 "template": "大于10: ${msg.data.value}"
             },
@@ -222,6 +201,7 @@ engine.register_node_type("custom/type", Arc::new(|config| {
         {
             "id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304",
             "type_name": "log",
+            "chain_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
             "config": {
                 "template": "小于等于10: ${msg.data.value}"
             },
@@ -244,7 +224,12 @@ engine.register_node_type("custom/type", Arc::new(|config| {
             "to_id": "3f2504e0-4f89-11d3-9a0c-0305e82c3304",
             "type_name": "failure"
         }
-    ]
+    ],
+    "metadata": {
+        "version": 1,
+        "created_at": 1679800000,
+        "updated_at": 1679800000
+    }
 }
 ```
 
@@ -258,6 +243,11 @@ pub struct CustomConfig {
     pub param1: String,
     pub param2: i32,
 }
+impl Default for CustomConfig {
+    fn default() -> Self {
+        Self {}
+    }
+}
 ```
 
 ### 2. 实现组件处理逻辑
@@ -265,14 +255,21 @@ pub struct CustomConfig {
 ```rust
 #[derive(Debug)]
 pub struct CustomNode {
+    #[allow(dead_code)]
     config: CustomConfig,
+}
+
+impl CustomNode {
+    pub fn new(config: UpperConfig) -> Self {
+        Self { config }
+    }
 }
 
 #[async_trait]
 impl NodeHandler for CustomNode {
-    async fn handle(&self, ctx: NodeContext<'_>, msg: Message) -> Result<Message, RuleError> {
+    async fn handle(&'a self, ctx: NodeContext<'_>, msg: Message) -> Result<Message, RuleError> {
         // 1. 获取配置参数
-        let param1 = &self.config.param1;
+        let param1 = self.config.param1;
         let param2 = self.config.param2;
 
         // 2. 处理消息
@@ -286,7 +283,7 @@ impl NodeHandler for CustomNode {
 
     fn get_descriptor(&self) -> NodeDescriptor {
         NodeDescriptor {
-            type_name: "custom".to_string(),
+            type_name: "custom/type".to_string(),
             name: "自定义节点".to_string(),
             description: "这是一个自定义处理节点".to_string(),
             node_type: NodeType::Middle,
@@ -295,10 +292,37 @@ impl NodeHandler for CustomNode {
 }
 ```
 
+### 3. 注册组件
+
+```rust
+engine.register_node_type("custom/type", Arc::new(|config| {
+    Ok(Arc::new(CustomNode::new(config)) as Arc<dyn NodeHandler>)
+})).await;
+```
+
+## 示例代码
+
+项目包含多个完整的示例:
+
+- examples/simple_rule - 基础规则链示例
+- examples/custom_component - 自定义大小写转换组件示例  
+- examples/filter_example - 过滤器示例
+- examples/transform_example - 数据转换示例
+- examples/delay_example - 延时处理示例
+- examples/schedule_example - 定时任务示例
+- examples/rest_client - HTTP请求示例
+- examples/weather_service - 自定义天气服务组件示例
+- examples/redis_example - Redis自定义组件示例
+- examples/aop_example - AOP拦截器示例
+- examples/subchain_example - 子规则链示例
+- examples/circular_chain - 循环依赖示例
+- examples/circular_subchain - 循环依赖子规则链示例
+- examples/circular_three_chains - 循环依赖三个规则链示例
+
 ## 最佳实践
 
 1. 规则链设计
-   - 每个规则链都必须以 start 节点开始
+   - 每个规则链都必须以 header 节点开始
    - 合理使用分支和汇聚节点控制流程
    - 避免过深的节点嵌套
 
@@ -317,8 +341,14 @@ impl NodeHandler for CustomNode {
 更多详细文档请参考:
 
 - [架构设计](docs/architecture.md)
-- [组件开发指南](docs/component.md) 
+- [组件开发指南](docs/component.md)
 - [API文档](docs/api.md)
+
+## 感谢
+
+感谢以下项目和库对 rule-rs 的启发和帮助:
+
+- [rulego](https://github.com/rulego/rulego)
 
 ## License
 
