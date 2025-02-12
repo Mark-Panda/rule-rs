@@ -8,3 +8,6 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Panda <simple_95@163.com>"]
 license = "MIT"
+repository = "https://github.com/Mark-Panda/rule-rs"
+description = "A lightweight rule engine implemented in Rust that supports asynchronous execution, component extension, and rule chain orchestration."
+readme = "README.md"
