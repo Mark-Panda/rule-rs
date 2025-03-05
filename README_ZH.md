@@ -1,3 +1,7 @@
+[English](README.md)| 简体中文
+
+如果喜欢或觉得对你有用请给点个Start吧.
+
 # rule-rs
 
 一个基于 Rust 实现的轻量级规则引擎,支持异步执行、组件扩展和规则链编排。
@@ -48,14 +52,7 @@
 
 ## 快速开始
 
-### 1. 添加依赖
-
-```toml
-[dependencies]
-rule-rs = "0.1.0"
-```
-
-### 2. 创建规则链
+### 1. 创建规则链
 
 ```rust
 use rule_rs::{Message, RuleEngine};

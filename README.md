@@ -1,3 +1,7 @@
+English| [简体中文](README_ZH.md)
+
+If you like it or find it useful, please give it a star.
+
 # rule-rs
 
 A lightweight rule engine implemented in Rust that supports asynchronous execution, component extension, and rule chain orchestration.
@@ -48,14 +52,7 @@ Nodes in rule chains are divided into three types:
 
 ## Quick Start
 
-### 1. Add Dependency
-
-```toml
-[dependencies]
-rule-rs = "0.1.0"
-```
-
-### 2. Create Rule Chain
+### 1. Create Rule Chain
 
 ```rust
 use rule_rs::{Message, RuleEngine};
