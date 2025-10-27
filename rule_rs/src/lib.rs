@@ -7,3 +7,4 @@ pub mod utils;
 pub use components::*;
 pub use engine::RuleEngine;
 pub use types::{Message, NodeContext, RuleError};
+pub use utils::resolve_placeholders_in_str;

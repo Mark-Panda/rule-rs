@@ -548,14 +548,25 @@ impl RuleEngineTrait for RuleEngine {
             .ok_or_else(|| RuleError::HandlerNotFound(node.type_name.clone()))?;
 
         // 节点执行前拦截
-        manager.before_node(ctx, &msg).await?;
+        // 在消息元数据中记录当前节点的输入消息（供后续占位符解析使用）
+        let mut in_msg = msg.clone();
+        in_msg
+            .metadata
+            .insert(format!("node.{}.input", node.id), serde_json::to_string(&msg).unwrap());
+        manager.before_node(ctx, &in_msg).await?;
 
         // 执行节点
-        let result = match handler.handle(ctx.clone(), msg.clone()).await {
+        let result = match handler.handle(ctx.clone(), in_msg.clone()).await {
             Ok(result) => {
+                // 在消息元数据中记录当前节点的输出消息
+                let mut out_msg = result.clone();
+                out_msg.metadata.insert(
+                    format!("node.{}.output", node.id),
+                    serde_json::to_string(&result).unwrap(),
+                );
                 // 节点执行后拦截
-                manager.after_node(ctx, &result).await?;
-                Ok(result)
+                manager.after_node(ctx, &out_msg).await?;
+                Ok(out_msg)
             }
             Err(e) => {
                 // 节点错误拦截
